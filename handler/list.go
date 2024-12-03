@@ -9,12 +9,17 @@ import (
 	"shuto-api/utils"
 )
 
-// ImageHandler processes image transformations based on query parameters
-func ListHandler(w http.ResponseWriter, r *http.Request) {
+// Utils defines the methods that can be used by the ListHandler
+type Utils interface {
+	ListPath(path string) ([]utils.RcloneFile, error)
+}
+
+// ListHandler processes listing of files based on the provided path
+func ListHandler(w http.ResponseWriter, r *http.Request, utils Utils) {
 	// Extract path and parameters
 	path := strings.TrimPrefix(r.URL.Path, "/list/")
 
-	// Fetch image data using rclone
+	// Fetch file data using the injected utils
 	files, err := utils.ListPath(path)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to list directory contents: %v", err), http.StatusInternalServerError)

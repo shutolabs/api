@@ -6,12 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"shuto-api/service"
 	"shuto-api/utils"
 )
 
 // ImageHandler processes image transformations based on query parameters
-func ImageHandler(w http.ResponseWriter, r *http.Request) {
+func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone) {
 	// Extract path and parameters
 	path := strings.TrimPrefix(r.URL.Path, "/image/")
 	width, _ := strconv.Atoi(r.URL.Query().Get("w"))
@@ -26,38 +25,38 @@ func ImageHandler(w http.ResponseWriter, r *http.Request) {
 		dpr = 1.0
 	}
 
-	options := service.ImageTransformOptions{
-		Width:   uint(width),
-		Height:  uint(height),
+	options := utils.ImageTransformOptions{
+		Width:   width,
+		Height:  height,
 		Crop:    crop,
 		Format:  format,
-		Quality: uint(quality),
+		Quality: quality,
 		Dpr:     dpr,
 		Fit:     fit,
 	}
 
 	// Fetch image data using rclone
-	imgData, err := utils.FetchImage(path)
+	imgData, err := rclone.FetchImage(path) // Use the rclone instance passed to the handler
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to fetch image: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Transform the image
-	modifiedImg, err := service.TransformImage(imgData, options)
+	modifiedImg, err := imgUtils.TransformImage(imgData, options)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to transform image: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Set response headers and write the modified image as an HTTP response
-	format, err = utils.GetMimeType(imgData)
+	mimeType, err := imgUtils.GetMimeType(modifiedImg)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get image format: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", format)
-	w.Header().Set("Cache-Control", "public, max-age=31536000") // Cache for 1 year
+	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set("Cache-Control", "public, max-age=31536000")
 	w.Write(modifiedImg)
 }
