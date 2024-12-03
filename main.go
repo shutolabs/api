@@ -18,10 +18,7 @@ func main() {
 	defer vips.Shutdown()
 
 	// Load .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	godotenv.Load()
 
 	// Initialize services and utilities
 	imageUtils := utils.NewImageUtils()

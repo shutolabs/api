@@ -35,7 +35,7 @@ func NewRclone(executor CommandExecutor) *rcloneImpl {
 
 func (r *rcloneImpl) FetchImage(path string) ([]byte, error) {
 	_, runningLocally := os.LookupEnv("RUNNING_LOCALLY")
-	remote := "server:"
+	remote := "server:/"
 	if runningLocally {
 		remote = "test:/"
 	}
@@ -48,7 +48,7 @@ func (r *rcloneImpl) FetchImage(path string) ([]byte, error) {
 
 func (r *rcloneImpl) ListPath(path string) ([]RcloneFile, error) {
 	_, runningLocally := os.LookupEnv("RUNNING_LOCALLY")
-	remote := "server:"
+	remote := "server:/"
 	if runningLocally {
 		remote = "test:/"
 	}
