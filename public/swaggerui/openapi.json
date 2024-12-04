@@ -1,0 +1,188 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Image Processing API",
+    "version": "1.0",
+    "description": "API for processing and transforming images"
+  },
+  "servers": [
+    {
+      "url": "/v1",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/image/{path}": {
+      "get": {
+        "summary": "Process and transform an image",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Path to the image file"
+          },
+          {
+            "name": "w",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Output image width in pixels"
+          },
+          {
+            "name": "h",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Output image height in pixels"
+          },
+          {
+            "name": "fit",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "clip",
+                "crop",
+                "fill"
+              ],
+              "default": "clip"
+            },
+            "description": "Resize mode for the image"
+          },
+          {
+            "name": "fm",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "jpg",
+                "jpeg",
+                "png",
+                "webp"
+              ]
+            },
+            "description": "Output format of the image"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 80
+            },
+            "description": "Compression quality for supported formats"
+          },
+          {
+            "name": "dpr",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 3,
+              "default": 1
+            },
+            "description": "Device pixel ratio for high-density displays"
+          },
+          {
+            "name": "blur",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 0
+            },
+            "description": "Gaussian blur intensity"
+          },
+          {
+            "name": "dl",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Force download instead of display"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Processed image",
+            "headers": {
+              "Content-Type": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp"
+                  ]
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "public, max-age=31536000"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string",
+                  "example": "attachment"
+                },
+                "description": "Present only when dl=true"
+              }
+            },
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Image not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

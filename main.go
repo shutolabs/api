@@ -39,6 +39,10 @@ func main() {
 	http.HandleFunc("/"+config.ApiVersion+"/image/", imageHandler)
 	http.HandleFunc("/"+config.ApiVersion+"/list/", listHandler)
 
+	// host swaggerui
+	fs := http.FileServer(http.Dir("./public/swaggerui"))
+	http.Handle("/swaggerui/", http.StripPrefix("/swaggerui/", fs))
+
 	// Get port from environment variable or use default
 	port := os.Getenv("PORT")
 	if port == "" {
