@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"shuto-api/config"
 	"shuto-api/utils"
 )
 
@@ -17,7 +18,7 @@ type Utils interface {
 // ListHandler processes listing of files based on the provided path
 func ListHandler(w http.ResponseWriter, r *http.Request, utils Utils) {
 	// Extract path and parameters
-	path := strings.TrimPrefix(r.URL.Path, "/list/")
+	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/list/")
 
 	// Fetch file data using the injected utils
 	files, err := utils.ListPath(path)
