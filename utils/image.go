@@ -9,13 +9,14 @@ import (
 )
 
 type ImageTransformOptions struct {
-	Width   int
-	Height  int
-	Crop    bool
-	Format  string
-	Quality int
-	Fit     string
-	Dpr     float64
+	Width         int
+	Height        int
+	Fit          string    // clip, crop, fill, max, min, scale
+	Format       string    // jpg, png, webp
+	Quality      int       // 0-100
+	Dpr          float64   // 1.0-3.0
+	Blur         int       // 0-100
+	ForceDownload bool
 }
 
 // ImageUtils interface for image operations
@@ -62,15 +63,13 @@ func (iu *imageUtils) TransformImage(imgData []byte, opts ImageTransformOptions)
 	}
 	defer image.Close()
 
+	// Apply DPR scaling
 	width := int(math.Round(float64(opts.Width) * opts.Dpr))
 	height := int(math.Round(float64(opts.Height) * opts.Dpr))
 
-	fmt.Println("width: ", width)
-	fmt.Println("height: ", height)
-
-	// Apply fit modes with "clip" as the default
+	// Apply fit modes according to spec
 	switch opts.Fit {
-	case "", "clip":
+	case "clip", "": // Default
 		if width == 0 && height == 0 {
 			width, height = image.Width(), image.Height()
 		} else if width == 0 {
@@ -91,27 +90,39 @@ func (iu *imageUtils) TransformImage(imgData []byte, opts ImageTransformOptions)
 		if err := image.Resize(scale, vips.KernelAuto); err != nil {
 			return nil, fmt.Errorf("failed to resize image: %w", err)
 		}
-
+	case "crop":
+		if err := image.Thumbnail(width, height, vips.InterestingCentre); err != nil {
+			return nil, fmt.Errorf("failed to crop image: %w", err)
+		}
+	case "fill":
+		if err := image.Resize(float64(width)/float64(image.Width()), vips.KernelAuto); err != nil {
+			return nil, fmt.Errorf("failed to fill image: %w", err)
+		}
 	default:
 		return nil, errors.New("invalid fit option")
 	}
 
-	// Export the transformed image
+	// Apply blur if specified
+	if opts.Blur > 0 {
+		sigma := float64(opts.Blur) * 0.3 // Convert blur parameter to sigma value
+		if err := image.GaussianBlur(sigma); err != nil {
+			return nil, fmt.Errorf("failed to apply blur: %w", err)
+		}
+	}
+
+	// Export with correct format
 	var modifiedImg []byte
 	switch opts.Format {
-	case "jpeg", "jpg":
-		modifiedImg, _, err = image.ExportJpeg(&vips.JpegExportParams{Quality: int(opts.Quality)})
+	case "jpg", "jpeg":
+		modifiedImg, _, err = image.ExportJpeg(&vips.JpegExportParams{Quality: opts.Quality})
 	case "png":
-		modifiedImg, _, err = image.ExportPng(&vips.PngExportParams{Compression: int(opts.Quality)})
+		modifiedImg, _, err = image.ExportPng(&vips.PngExportParams{})
 	case "webp":
-		modifiedImg, _, err = image.ExportWebp(&vips.WebpExportParams{Quality: int(opts.Quality)})
+		modifiedImg, _, err = image.ExportWebp(&vips.WebpExportParams{Quality: opts.Quality})
 	default:
-		modifiedImg, _, err = image.ExportJpeg(&vips.JpegExportParams{Quality: int(opts.Quality)})
+		// Default to original format
+		modifiedImg, _, err = image.ExportJpeg(&vips.JpegExportParams{Quality: opts.Quality})
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to export image: %v", err)
-	}
-
-	return modifiedImg, nil
+	return modifiedImg, err
 }

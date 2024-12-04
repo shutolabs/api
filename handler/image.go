@@ -6,33 +6,49 @@ import (
 	"strconv"
 	"strings"
 
+	"shuto-api/config"
 	"shuto-api/utils"
 )
 
 // ImageHandler processes image transformations based on query parameters
 func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone) {
 	// Extract path and parameters
-	path := strings.TrimPrefix(r.URL.Path, "/image/")
+	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/image/")
+	
+	// Parse parameters according to spec
 	width, _ := strconv.Atoi(r.URL.Query().Get("w"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("h"))
-	format := r.URL.Query().Get("format")
-	crop := r.URL.Query().Get("crop") == "true"
 	fit := r.URL.Query().Get("fit")
-	quality, _ := strconv.Atoi(r.URL.Query().Get("quality"))
-	dpr, _ := strconv.ParseFloat(r.URL.Query().Get("dpr"), 64)
-
-	if dpr == 0 {
-		dpr = 1.0
+	if fit == "" {
+		fit = "clip" // Default as per spec
 	}
+	
+	dpr, err := strconv.ParseFloat(r.URL.Query().Get("dpr"), 64)
+	if err != nil || dpr == 0 {
+		dpr = 1.0 // Default as per spec
+	}
+	if dpr > 3.0 {
+		dpr = 3.0 // Max value as per spec
+	}
+	
+	format := r.URL.Query().Get("fm")
+	quality, err := strconv.Atoi(r.URL.Query().Get("q"))
+	if err != nil || quality == 0 {
+		quality = 75 // Default as per spec
+	}
+	
+	blur, _ := strconv.Atoi(r.URL.Query().Get("blur"))
+	forceDownload := r.URL.Query().Get("dl") == "1"
 
 	options := utils.ImageTransformOptions{
-		Width:   width,
-		Height:  height,
-		Crop:    crop,
-		Format:  format,
-		Quality: quality,
-		Dpr:     dpr,
-		Fit:     fit,
+		Width:         width,
+		Height:        height,
+		Fit:          fit,
+		Format:       format,
+		Quality:      quality,
+		Dpr:          dpr,
+		Blur:         blur,
+		ForceDownload: forceDownload,
 	}
 
 	// Fetch image data using rclone
@@ -54,6 +70,11 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get image format: %v", err), http.StatusInternalServerError)
 		return
+	}
+
+	// Set download header if requested
+	if forceDownload {
+		w.Header().Set("Content-Disposition", "attachment")
 	}
 
 	w.Header().Set("Content-Type", mimeType)

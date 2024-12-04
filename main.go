@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"shuto-api/config"
 	"shuto-api/handler"
 	"shuto-api/utils"
 
@@ -35,8 +36,8 @@ func main() {
 	}
 
 	// Register routes
-	http.HandleFunc("/image/", imageHandler)
-	http.HandleFunc("/list/", listHandler)
+	http.HandleFunc("/"+config.ApiVersion+"/image/", imageHandler)
+	http.HandleFunc("/"+config.ApiVersion+"/list/", listHandler)
 
 	// Get port from environment variable or use default
 	port := os.Getenv("PORT")

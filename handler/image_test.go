@@ -47,19 +47,22 @@ func TestImageHandler(t *testing.T) {
 		mockMimeType   func([]byte) (string, error)
 		expectedStatus int
 		expectedMime   string
+		expectedHeaders map[string]string
 	}{
 		{
-			name: "Successful image processing",
+			name: "Basic resize with defaults",
 			path: "/image/test.jpg",
 			queryParams: map[string]string{
-				"w": "100", "h": "100", "format": "jpeg",
-				"crop": "true", "fit": "cover", "quality": "80",
-				"dpr": "2.0",
+				"w": "100",
+				"h": "100",
 			},
 			mockFetch: func(path string) ([]byte, error) {
 				return []byte("mock-image-data"), nil
 			},
 			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
+				if opts.Width != 100 || opts.Height != 100 {
+					t.Errorf("expected width 100 and height 100, got %d and %d", opts.Width, opts.Height)
+				}
 				return []byte("mock-transformed-image"), nil
 			},
 			mockMimeType: func(data []byte) (string, error) {
@@ -67,6 +70,43 @@ func TestImageHandler(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			expectedMime:   "image/jpeg",
+			expectedHeaders: map[string]string{
+				"Cache-Control": "public, max-age=31536000",
+			},
+		},
+		{
+			name: "Full parameter test",
+			path: "/image/test.jpg",
+			queryParams: map[string]string{
+				"w": "300",
+				"h": "200",
+				"fit": "crop",
+				"fm": "webp",
+				"q": "80",
+				"dpr": "2",
+				"blur": "15",
+				"dl": "1",
+			},
+			mockFetch: func(path string) ([]byte, error) {
+				return []byte("mock-image-data"), nil
+			},
+			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
+				if opts.Width != 300 || opts.Height != 200 || opts.Fit != "crop" ||
+				   opts.Format != "webp" || opts.Quality != 80 || opts.Dpr != 2.0 ||
+				   opts.Blur != 15 || !opts.ForceDownload {
+					t.Error("Transform options not set correctly")
+				}
+				return []byte("mock-transformed-image"), nil
+			},
+			mockMimeType: func(data []byte) (string, error) {
+				return "image/webp", nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedMime:   "image/webp",
+			expectedHeaders: map[string]string{
+				"Content-Disposition": "attachment",
+				"Cache-Control": "public, max-age=31536000",
+			},
 		},
 		{
 			name: "Failed to fetch image",
@@ -121,13 +161,40 @@ func TestImageHandler(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			expectedMime:   "image/jpeg",
+			expectedHeaders: map[string]string{
+				"Cache-Control": "public, max-age=31536000",
+			},
+		},
+		{
+			name: "DPR value > 3",
+			path: "/image/test.jpg",
+			queryParams: map[string]string{
+				"w": "100", "h": "100", "dpr": "3.1",
+			},
+			mockFetch: func(path string) ([]byte, error) {
+				return []byte("mock-image-data"), nil
+			},
+			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
+				if opts.Dpr != 3.0 {
+					t.Errorf("expected default DPR 3.0, got %f", opts.Dpr)
+				}
+				return []byte("mock-transformed-image"), nil
+			},
+			mockMimeType: func(data []byte) (string, error) {
+				return "image/jpeg", nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedMime:   "image/jpeg",
+			expectedHeaders: map[string]string{
+				"Cache-Control": "public, max-age=31536000",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRclone := &MockRclone{
-				FetchImageFunc: tt.mockFetch,
+					FetchImageFunc: tt.mockFetch,
 			}
 
 			mockImageUtils := &MockImageUtils{
@@ -154,8 +221,10 @@ func TestImageHandler(t *testing.T) {
 					t.Errorf("expected Content-Type %s, got %s", tt.expectedMime, contentType)
 				}
 
-				if cacheControl := rr.Header().Get("Cache-Control"); cacheControl != "public, max-age=31536000" {
-					t.Errorf("expected Cache-Control header not set correctly, got %s", cacheControl)
+				for k, v := range tt.expectedHeaders {
+					if rr.Header().Get(k) != v {
+						t.Errorf("expected %s header %s, got %s", k, v, rr.Header().Get(k))
+					}
 				}
 			}
 		})
