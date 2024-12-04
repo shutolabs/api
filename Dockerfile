@@ -32,6 +32,9 @@ COPY --from=builder /app/main .
 # Copy rclone configuration
 COPY ./rclone.conf /root/.config/rclone/rclone.conf
 
+# Copy public folder
+COPY ./public ./public
+
 # Expose the port the app runs on
 EXPOSE 8080
 
