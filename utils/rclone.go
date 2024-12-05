@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -15,6 +14,12 @@ type RcloneFile struct {
 	MimeType string `json:"MimeType"`
 	ModTime  string `json:"ModTime"`
 	IsDir    bool   `json:"IsDir"`
+}
+
+type RcloneConfig struct {
+	Flags []string
+	Type string
+	Remote string
 }
 
 // Rclone interface for Rclone operations
@@ -33,13 +38,34 @@ func NewRclone(executor CommandExecutor) *rcloneImpl {
 	return &rcloneImpl{executor: executor}
 }
 
-func (r *rcloneImpl) FetchImage(path string) ([]byte, error) {
-	_, runningLocally := os.LookupEnv("RUNNING_LOCALLY")
-	remote := "server:/"
-	if runningLocally {
-		remote = "test:/"
+// GetRcloneConfig retrieves the configuration for rclone
+func GetRcloneConfig() (*RcloneConfig, error) {
+	config := &RcloneConfig{
+		Type: "webdav",
+		Remote: "webdav",
+		Flags: []string{
+			"--webdav-vendor=" + os.Getenv("RCLONE_CONFIG_SERVER_VENDOR"),
+			"--webdav-url=" + os.Getenv("RCLONE_CONFIG_SERVER_URL"),
+			"--webdav-user=" + os.Getenv("RCLONE_CONFIG_SERVER_USER"),
+			"--webdav-pass=" + os.Getenv("RCLONE_CONFIG_SERVER_PASS"),
+		},
 	}
-	output, err := r.executor.Execute("rclone", "cat", remote+path)
+	return config, nil
+}
+
+// rcloneCmd executes an rclone command with the given configuration
+func (r *rcloneImpl) rcloneCmd(command string, path string) ([]byte, error) {
+	config, err := GetRcloneConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rclone config: %v", err)
+	}
+
+	args := append([]string{command, config.Remote + ":" + path}, config.Flags...)
+	return r.executor.Execute("rclone", args...)
+}
+
+func (r *rcloneImpl) FetchImage(path string) ([]byte, error) {
+	output, err := r.rcloneCmd("lsjson", path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch image with rclone: %v", err)
 	}
@@ -47,13 +73,7 @@ func (r *rcloneImpl) FetchImage(path string) ([]byte, error) {
 }
 
 func (r *rcloneImpl) ListPath(path string) ([]RcloneFile, error) {
-	_, runningLocally := os.LookupEnv("RUNNING_LOCALLY")
-	remote := "server:/"
-	if runningLocally {
-		remote = "test:/"
-	}
-	log.Println(remote + path)
-	output, err := r.executor.Execute("rclone", "lsjson", remote+path)
+	output, err := r.rcloneCmd("lsjson", path)
 	if err != nil {
 		return nil, fmt.Errorf("error executing rclone lsjson: %v", err)
 	}
