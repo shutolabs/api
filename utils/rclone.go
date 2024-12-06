@@ -72,7 +72,7 @@ func (r *rcloneImpl) rcloneCmd(command string, path string, domain string) ([]by
 }
 
 func (r *rcloneImpl) FetchImage(path string, domain string) ([]byte, error) {
-	output, err := r.rcloneCmd("lsjson", path, domain)
+	output, err := r.rcloneCmd("cat", path, domain)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch image with rclone: %v", err)
 	}
