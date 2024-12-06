@@ -35,6 +35,9 @@ COPY ./rclone.conf /root/.config/rclone/rclone.conf
 # Copy public folder
 COPY ./public ./public
 
+# Copy the domains.yaml file
+COPY ./config/domains.yaml ./config/domains.yaml
+
 # Expose the port the app runs on
 EXPOSE 8080
 
