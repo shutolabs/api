@@ -12,6 +12,9 @@ import (
 
 // ImageHandler processes image transformations based on query parameters
 func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone) {
+	// Get domain configuration
+	domain := utils.GetDomainFromRequest(r)
+
 	// Extract path and parameters
 	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/image/")
 	
@@ -51,8 +54,8 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 		ForceDownload: forceDownload,
 	}
 
-	// Fetch image data using rclone
-	imgData, err := rclone.FetchImage(path) // Use the rclone instance passed to the handler
+	// Fetch image data using rclone with domain-specific config
+	imgData, err := rclone.FetchImage(path, domain)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to fetch image: %v", err), http.StatusInternalServerError)
 		return

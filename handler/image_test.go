@@ -23,26 +23,12 @@ func (m *MockImageUtils) GetMimeType(data []byte) (string, error) {
 	return m.GetMimeTypeFunc(data)
 }
 
-// MockRclone implements utils.Rclone interface for testing
-type MockRclone struct {
-	FetchImageFunc func(string) ([]byte, error)
-	ListPathFunc   func(string) ([]utils.RcloneFile, error)
-}
-
-func (m *MockRclone) FetchImage(path string) ([]byte, error) {
-	return m.FetchImageFunc(path)
-}
-
-func (m *MockRclone) ListPath(path string) ([]utils.RcloneFile, error) {
-	return m.ListPathFunc(path)
-}
-
 func TestImageHandler(t *testing.T) {
 	tests := []struct {
 		name           string
 		path           string
 		queryParams    map[string]string
-		mockFetch      func(string) ([]byte, error)
+		mockFetch      func(string, string) ([]byte, error)
 		mockTransform  func([]byte, utils.ImageTransformOptions) ([]byte, error)
 		mockMimeType   func([]byte) (string, error)
 		expectedStatus int
@@ -56,7 +42,7 @@ func TestImageHandler(t *testing.T) {
 				"w": "100",
 				"h": "100",
 			},
-			mockFetch: func(path string) ([]byte, error) {
+			mockFetch: func(remote, path string) ([]byte, error) {
 				return []byte("mock-image-data"), nil
 			},
 			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
@@ -87,7 +73,7 @@ func TestImageHandler(t *testing.T) {
 				"blur": "15",
 				"dl": "1",
 			},
-			mockFetch: func(path string) ([]byte, error) {
+			mockFetch: func(remote, path string) ([]byte, error) {
 				return []byte("mock-image-data"), nil
 			},
 			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
@@ -111,15 +97,21 @@ func TestImageHandler(t *testing.T) {
 		{
 			name: "Failed to fetch image",
 			path: "/image/nonexistent.jpg",
-			mockFetch: func(path string) ([]byte, error) {
+			mockFetch: func(remote, path string) ([]byte, error) {
 				return nil, fmt.Errorf("image not found")
+			},
+			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
+				return nil, nil
+			},
+			mockMimeType: func(data []byte) (string, error) {
+				return "", nil
 			},
 			expectedStatus: http.StatusInternalServerError,
 		},
 		{
 			name: "Failed to transform image",
 			path: "/image/test.jpg",
-			mockFetch: func(path string) ([]byte, error) {
+			mockFetch: func(remote, path string) ([]byte, error) {
 				return []byte("mock-image-data"), nil
 			},
 			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
@@ -130,7 +122,7 @@ func TestImageHandler(t *testing.T) {
 		{
 			name: "Failed to get mime type",
 			path: "/image/test.jpg",
-			mockFetch: func(path string) ([]byte, error) {
+			mockFetch: func(remote, path string) ([]byte, error) {
 				return []byte("mock-image-data"), nil
 			},
 			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
@@ -147,7 +139,7 @@ func TestImageHandler(t *testing.T) {
 			queryParams: map[string]string{
 				"w": "100", "h": "100",
 			},
-			mockFetch: func(path string) ([]byte, error) {
+			mockFetch: func(remote, path string) ([]byte, error) {
 				return []byte("mock-image-data"), nil
 			},
 			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
@@ -171,7 +163,7 @@ func TestImageHandler(t *testing.T) {
 			queryParams: map[string]string{
 				"w": "100", "h": "100", "dpr": "3.1",
 			},
-			mockFetch: func(path string) ([]byte, error) {
+			mockFetch: func(remote, path string) ([]byte, error) {
 				return []byte("mock-image-data"), nil
 			},
 			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
@@ -193,8 +185,8 @@ func TestImageHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRclone := &MockRclone{
-					FetchImageFunc: tt.mockFetch,
+			mockRclone := &utils.MockRclone{
+				FetchImageFunc: tt.mockFetch,
 			}
 
 			mockImageUtils := &MockImageUtils{

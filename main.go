@@ -24,7 +24,8 @@ func main() {
 	// Initialize services and utilities
 	imageUtils := utils.NewImageUtils()
 	executor := utils.NewCommandExecutor()
-	rclone := utils.NewRclone(executor)
+	configManager := config.NewDomainConfigManager(&config.FileConfigLoader{}, "config/domains.yaml")
+	rclone := utils.NewRclone(executor, configManager)
 
 	// Create handler functions
 	imageHandler := func(w http.ResponseWriter, r *http.Request) {

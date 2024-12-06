@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
+	"shuto-api/config"
 	"shuto-api/utils"
 )
 
@@ -29,14 +29,13 @@ func (m *MockUtils) ListPath(path string) ([]utils.RcloneFile, error) {
 }
 
 func TestListHandler(t *testing.T) {
-	// Create a sample time for consistent testing
-	sampleTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	sampleTimeStr := sampleTime.Format(time.RFC3339)
-
+	// Define a sample time string for consistency
+	sampleTimeStr := "2024-01-01T00:00:00Z"
+	
 	tests := []struct {
 		name           string
 		path           string
-		mockFiles      []utils.RcloneFile
+		mockFiles      []byte
 		mockListError  error
 		expectedStatus int
 		expectedBody   string
@@ -44,25 +43,25 @@ func TestListHandler(t *testing.T) {
 	}{
 		{
 			name: "Successful listing with multiple files",
-			path: "/list/photos",
-			mockFiles: []utils.RcloneFile{
+			path: "http://test/v1/list/photos",
+			mockFiles: []byte(`[
 				{
-					Path:     "photos/file1.jpg",
-					Name:     "file1.jpg",
-					Size:     1024,
-					MimeType: "image/jpeg",
-					ModTime:  sampleTimeStr,
-					IsDir:    false,
+					"path": "photos/file1.jpg",
+					"name": "file1.jpg",
+					"size": 1024,
+					"mimeType": "image/jpeg",
+					"modTime": "` + sampleTimeStr + `",
+					"isDir": false
 				},
 				{
-					Path:     "photos/dir1",
-					Name:     "dir1",
-					Size:     0,
-					MimeType: "",
-					ModTime:  sampleTimeStr,
-					IsDir:    true,
-				},
-			},
+					"path": "photos/dir1",
+					"name": "dir1",
+					"size": 0,
+					"mimeType": "",
+					"modTime": "` + sampleTimeStr + `",
+					"isDir": true
+				}
+			]`),
 			expectedStatus: http.StatusOK,
 			checkBody: func(t *testing.T, body []byte) {
 				var files []utils.RcloneFile
@@ -80,8 +79,8 @@ func TestListHandler(t *testing.T) {
 		},
 		{
 			name:           "Empty directory",
-			path:           "/list/empty",
-			mockFiles:      []utils.RcloneFile{},
+			path:           "http://test/v1/list/empty",
+			mockFiles:      []byte(`[]`),
 			expectedStatus: http.StatusOK,
 			checkBody: func(t *testing.T, body []byte) {
 				var files []utils.RcloneFile
@@ -96,24 +95,24 @@ func TestListHandler(t *testing.T) {
 		},
 		{
 			name:           "Error listing files",
-			path:           "/list/error",
-			mockListError:  fmt.Errorf("failed to list directory"),
+			path:           "http://test/v1/list/error",
+			mockListError:  fmt.Errorf("error executing rclone lsjson: failed to list directory"),
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to list directory contents: failed to list directory\n",
+			expectedBody:   "Failed to list directory contents: error executing rclone lsjson: error executing rclone lsjson: failed to list directory\n",
 		},
 		{
 			name: "Root path listing",
-			path: "/list/",
-			mockFiles: []utils.RcloneFile{
+			path: "http://test/v1/list/123",
+			mockFiles: []byte(`[
 				{
-					Path:     "file1.jpg",
-					Name:     "file1.jpg",
-					Size:     1024,
-					MimeType: "image/jpeg",
-					ModTime:  sampleTimeStr,
-					IsDir:    false,
-				},
-			},
+					"path": "file1.jpg",
+					"name": "file1.jpg",
+					"size": 1024,
+					"mimeType": "image/jpeg",
+					"modTime": "` + sampleTimeStr + `",
+					"isDir": false
+				}
+			]`),
 			expectedStatus: http.StatusOK,
 			checkBody: func(t *testing.T, body []byte) {
 				var files []utils.RcloneFile
@@ -130,15 +129,29 @@ func TestListHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUtils := &MockUtils{
-				Files: tt.mockFiles,
-				Err:   tt.mockListError,
+			mockExecutor := &utils.MockCommandExecutor{
+				ExecuteFunc: func(command string, args ...string) ([]byte, error) {
+					return tt.mockFiles, tt.mockListError
+				},
 			}
+		
+			mockConfigManager := &config.MockDomainConfigManager{
+				GetDomainConfigFunc: func(domain string) (config.DomainConfig, error) {
+					return config.DomainConfig{
+						Rclone: config.RcloneConfig{
+							Remote: "test",
+							Flags:  []string{},
+						},
+					}, nil
+				},
+			}
+
+			rclone := utils.NewRclone(mockExecutor, mockConfigManager)
 
 			req := httptest.NewRequest("GET", tt.path, nil)
 			rec := httptest.NewRecorder()
 
-			ListHandler(rec, req, mockUtils)
+			ListHandler(rec, req, rclone)
 
 			// Check status code
 			if rec.Code != tt.expectedStatus {

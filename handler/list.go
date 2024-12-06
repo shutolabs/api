@@ -16,12 +16,15 @@ type Utils interface {
 }
 
 // ListHandler processes listing of files based on the provided path
-func ListHandler(w http.ResponseWriter, r *http.Request, utils Utils) {
+func ListHandler(w http.ResponseWriter, r *http.Request, rclone utils.Rclone) {
+	// Get domain configuration
+	domain := utils.GetDomainFromRequest(r)
+
 	// Extract path and parameters
 	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/list/")
 
 	// Fetch file data using the injected utils
-	files, err := utils.ListPath(path)
+	files, err := rclone.ListPath(path, domain)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to list directory contents: %v", err), http.StatusInternalServerError)
 		return

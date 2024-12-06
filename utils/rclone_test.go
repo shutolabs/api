@@ -2,12 +2,12 @@ package utils
 
 import (
 	"fmt"
-	"os"
 	"testing"
+
+	"shuto-api/config"
 
 	"github.com/stretchr/testify/assert"
 )
-
 
 func TestFetchImage(t *testing.T) {
 	mockExecutor := &MockCommandExecutor{
@@ -16,78 +16,89 @@ func TestFetchImage(t *testing.T) {
 		},
 	}
 
-	rclone := NewRclone(mockExecutor)
+	mockConfigManager := &config.MockDomainConfigManager{
+		GetDomainConfigFunc: func(domain string) (config.DomainConfig, error) {
+			return config.DomainConfig{
+				Rclone: config.RcloneConfig{
+					Remote: "test",
+					Flags:  []string{},
+				},
+			}, nil
+		},
+	}
 
-	imageData, err := rclone.FetchImage("mock/path")
+	rclone := NewRclone(mockExecutor, mockConfigManager)
+
+	imageData, err := rclone.FetchImage("mock/path", "test")
 	assert.Error(t, err)
 	assert.Equal(t, "failed to fetch image with rclone: mock error", err.Error())
 	assert.Nil(t, imageData)
 
-	// Running locally case
-	os.Setenv("RUNNING_LOCALLY", "true")
-	defer os.Unsetenv("RUNNING_LOCALLY") // Clean up after test
-
-	mockExecutor.ExecuteFunc = func(command string, args ...string) ([]byte, error) {
-		return []byte(`mock image data`), nil
+	// Test config manager error
+	mockConfigManager.GetDomainConfigFunc = func(domain string) (config.DomainConfig, error) {
+		return config.DomainConfig{}, fmt.Errorf("config error")
 	}
 
-	imageData, err = rclone.FetchImage("mock/path")
-	assert.Nil(t, err)
-	assert.Equal(t, []byte(`mock image data`), imageData)
-	assert.NotNil(t, imageData)
-
+	imageData, err = rclone.FetchImage("mock/path", "test")
+	assert.Error(t, err)
+	assert.NotNil(t, err)
+	assert.Nil(t, imageData)
 }
 
 func TestListPath(t *testing.T) {
+	// Test successful case
 	mockExecutor := &MockCommandExecutor{
 		ExecuteFunc: func(command string, args ...string) ([]byte, error) {
-			return nil, fmt.Errorf("mock error")
+			return []byte(`[
+				{"Path":"file1.jpg","Name":"file1.jpg","Size":1024,"MimeType":"image/jpeg"},
+				{"Path":"file2.png","Name":"file2.png","Size":2048,"MimeType":"image/png"},
+				{"Path":"file3.gif","Name":"file3.gif","Size":512,"MimeType":"image/gif"}
+			]`), nil
 		},
 	}
-	
-	rclone := NewRclone(mockExecutor)
-	
-	// Error case: Command execution error
-	listData, err := rclone.ListPath("mock/path")
-	assert.Error(t, err)
-	assert.Nil(t, listData)
 
-	// Error case: JSON decoding error
-	mockExecutor.ExecuteFunc = func(command string, args ...string) ([]byte, error) {
-		return []byte(`invalid json`), nil // Simulate invalid JSON
+	mockConfigManager := &config.MockDomainConfigManager{
+		GetDomainConfigFunc: func(domain string) (config.DomainConfig, error) {
+			return config.DomainConfig{
+				Rclone: config.RcloneConfig{
+					Remote: "test",
+					Flags:  []string{},
+				},
+			}, nil
+		},
 	}
 
-	listData, err = rclone.ListPath("mock/path")
-	assert.Error(t, err)
-	assert.Nil(t, listData)
-	
-	// Successful case
-	mockExecutor.ExecuteFunc = func(command string, args ...string) ([]byte, error) {
-		return []byte(`[{"Path":"mock/path/file1.txt","Name":"file1.txt","Size":1234,"MimeType":"text/plain","ModTime":"2023-01-01T00:00:00Z","IsDir":false}]`), nil
+	rclone := NewRclone(mockExecutor, mockConfigManager)
+
+	// Test successful listing
+	files, err := rclone.ListPath("mock/path", "test")
+	assert.NoError(t, err)
+	expectedFiles := []RcloneFile{
+		{Path: "file1.jpg", Name: "file1.jpg", Size: 1024, MimeType: "image/jpeg"},
+		{Path: "file2.png", Name: "file2.png", Size: 2048, MimeType: "image/png"},
+		{Path: "file3.gif", Name: "file3.gif", Size: 512, MimeType: "image/gif"},
 	}
-	listData, err = rclone.ListPath("mock/path")
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(listData))
-	assert.Equal(t, "mock/path/file1.txt", listData[0].Path)
-	assert.Equal(t, "file1.txt", listData[0].Name)
-	assert.Equal(t, int64(1234), listData[0].Size)
-	assert.Equal(t, "text/plain", listData[0].MimeType)
-	assert.Equal(t, "2023-01-01T00:00:00Z", listData[0].ModTime)
-	assert.Equal(t, false, listData[0].IsDir)
+	assert.Equal(t, expectedFiles, files)
 
-	// Running locally case
-	os.Setenv("RUNNING_LOCALLY", "true")
-	defer os.Unsetenv("RUNNING_LOCALLY") // Clean up after test
+	// Test executor error
+	mockExecutor.ExecuteFunc = func(command string, args ...string) ([]byte, error) {
+		return nil, fmt.Errorf("mock error")
+	}
 
-	listData, err = rclone.ListPath("mock/path")
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(listData))
-	assert.Equal(t, "mock/path/file1.txt", listData[0].Path)
-	assert.Equal(t, "file1.txt", listData[0].Name)
-	assert.Equal(t, int64(1234), listData[0].Size)
-	assert.Equal(t, "text/plain", listData[0].MimeType)
-	assert.Equal(t, "2023-01-01T00:00:00Z", listData[0].ModTime)
-	assert.Equal(t, false, listData[0].IsDir)
+	files, err = rclone.ListPath("mock/path", "test")
+	assert.Error(t, err)
+	assert.Equal(t, "error executing rclone lsjson: mock error", err.Error())
+	assert.Nil(t, files)
+
+	// Test config manager error
+	mockConfigManager.GetDomainConfigFunc = func(domain string) (config.DomainConfig, error) {
+		return config.DomainConfig{}, fmt.Errorf("config error")
+	}
+
+	files, err = rclone.ListPath("mock/path", "test")
+	assert.Error(t, err)
+	assert.NotNil(t, err)
+	assert.Nil(t, files)
 }
 
 

@@ -3,7 +3,8 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+
+	"shuto-api/config"
 )
 
 // RcloneFile represents a file in Rclone
@@ -16,46 +17,52 @@ type RcloneFile struct {
 	IsDir    bool   `json:"IsDir"`
 }
 
-type RcloneConfig struct {
-	Flags []string
-	Type string
-	Remote string
-}
-
-// Rclone interface for Rclone operations
+// Define the interface first
 type Rclone interface {
-	FetchImage(path string) ([]byte, error)
-	ListPath(path string) ([]RcloneFile, error)
+	FetchImage(path string, domain string) ([]byte, error)
+	ListPath(path string, domain string) ([]RcloneFile, error)
 }
 
-// rcloneImpl is the concrete implementation of Rclone
+// MockRclone implements Rclone interface
+type MockRclone struct {
+	FetchImageFunc func(path string, domain string) ([]byte, error)
+	ListPathFunc   func(path string, domain string) ([]RcloneFile, error)
+}
+
+// Implement the interface methods
+func (m *MockRclone) FetchImage(path string, domain string) ([]byte, error) {
+	return m.FetchImageFunc(path, domain)
+}
+
+func (m *MockRclone) ListPath(path string, domain string) ([]RcloneFile, error) {
+	return m.ListPathFunc(path, domain)
+}
+
 type rcloneImpl struct {
-	executor CommandExecutor
+	executor      CommandExecutor
+	configManager config.DomainConfigManager
 }
 
 // NewRclone creates a new instance of rcloneImpl
-func NewRclone(executor CommandExecutor) *rcloneImpl {
-	return &rcloneImpl{executor: executor}
-}
-
-// GetRcloneConfig retrieves the configuration for rclone
-func GetRcloneConfig() (*RcloneConfig, error) {
-	config := &RcloneConfig{
-		Type: "webdav",
-		Remote: "webdav",
-		Flags: []string{
-			"--webdav-vendor=" + os.Getenv("RCLONE_CONFIG_SERVER_VENDOR"),
-			"--webdav-url=" + os.Getenv("RCLONE_CONFIG_SERVER_URL"),
-			"--webdav-user=" + os.Getenv("RCLONE_CONFIG_SERVER_USER"),
-			"--webdav-pass=" + os.Getenv("RCLONE_CONFIG_SERVER_PASS"),
-		},
+func NewRclone(executor CommandExecutor, configManager config.DomainConfigManager) *rcloneImpl {
+	return &rcloneImpl{
+		executor:      executor,
+		configManager: configManager,
 	}
-	return config, nil
 }
 
-// rcloneCmd executes an rclone command with the given configuration
-func (r *rcloneImpl) rcloneCmd(command string, path string) ([]byte, error) {
-	config, err := GetRcloneConfig()
+// GetRcloneConfig is now a method of rcloneImpl
+func (r *rcloneImpl) getRcloneConfig(domain string) (*config.RcloneConfig, error) {
+	domainConfig, err := r.configManager.GetDomainConfig(domain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get domain config: %v", err)
+	}
+	return &domainConfig.Rclone, nil
+}
+
+// rcloneCmd now uses the instance method
+func (r *rcloneImpl) rcloneCmd(command string, path string, domain string) ([]byte, error) {
+	config, err := r.getRcloneConfig(domain)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rclone config: %v", err)
 	}
@@ -64,16 +71,17 @@ func (r *rcloneImpl) rcloneCmd(command string, path string) ([]byte, error) {
 	return r.executor.Execute("rclone", args...)
 }
 
-func (r *rcloneImpl) FetchImage(path string) ([]byte, error) {
-	output, err := r.rcloneCmd("lsjson", path)
+func (r *rcloneImpl) FetchImage(path string, domain string) ([]byte, error) {
+	output, err := r.rcloneCmd("lsjson", path, domain)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch image with rclone: %v", err)
 	}
 	return output, nil
 }
 
-func (r *rcloneImpl) ListPath(path string) ([]RcloneFile, error) {
-	output, err := r.rcloneCmd("lsjson", path)
+func (r *rcloneImpl) ListPath(path string, domain string) ([]RcloneFile, error) {
+	fmt.Println("Listing path:", path, "for domain:", domain)
+	output, err := r.rcloneCmd("lsjson", path, domain)
 	if err != nil {
 		return nil, fmt.Errorf("error executing rclone lsjson: %v", err)
 	}

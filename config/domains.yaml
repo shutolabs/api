@@ -1,0 +1,28 @@
+domains:
+  localhost:
+    rclone:
+      remote: test
+      flags: []
+
+  test:
+    rclone:
+      remote: test
+      flags: []
+
+  shuto.test:
+    rclone:
+      remote: webdav
+      flags:
+        - --webdav-vendor=${RCLONE_CONFIG_SERVER_VENDOR}
+        - --webdav-url=${RCLONE_CONFIG_SERVER_URL}
+        - --webdav-user=${RCLONE_CONFIG_SERVER_USER}
+        - --webdav-pass=${RCLONE_CONFIG_SERVER_PASS}
+
+  api.shuto.lg-apps.tech:
+    rclone:
+      remote: webdav
+      flags:
+        - --webdav-vendor=${RCLONE_CONFIG_SERVER_VENDOR}
+        - --webdav-url=${RCLONE_CONFIG_SERVER_URL}
+        - --webdav-user=${RCLONE_CONFIG_SERVER_USER}
+        - --webdav-pass=${RCLONE_CONFIG_SERVER_PASS}
