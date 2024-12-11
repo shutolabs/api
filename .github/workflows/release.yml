@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      force-version:
+        description: "Force specific version (leave empty for automatic)"
+        required: false
+        type: string
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          npm install -g semantic-release @semantic-release/git @semantic-release/changelog @semantic-release/exec
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE_VERSION: ${{ inputs.force-version }}
+        run: |
+          npx semantic-release
