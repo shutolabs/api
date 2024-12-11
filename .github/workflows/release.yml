@@ -16,11 +16,13 @@ jobs:
       contents: write
       packages: write
       pull-requests: write
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -33,7 +35,7 @@ jobs:
 
       - name: Create Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           FORCE_VERSION: ${{ inputs.force-version }}
         run: |
           npx semantic-release
