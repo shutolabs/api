@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/lgastler/shuto-api/compare/v1.0.0...v1.0.1) (2024-12-12)
+
+
+### Bug Fixes
+
+* **config:** update config for all domains ([9582916](https://github.com/lgastler/shuto-api/commit/958291670916afc07da8781b9e9328c6dbdb13dd))
+
 # 1.0.0 (2024-12-12)
 
 
