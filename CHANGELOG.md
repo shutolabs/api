@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/lgastler/shuto-api/compare/v1.0.1...v1.0.2) (2024-12-19)
+
+
+### Bug Fixes
+
+* **tests:** with no configured logger ([274f258](https://github.com/lgastler/shuto-api/commit/274f258e1d212bb89858077df95037a9d5f25383))
+
 ## [1.0.1](https://github.com/lgastler/shuto-api/compare/v1.0.0...v1.0.1) (2024-12-12)
 
 
