@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/lgastler/shuto-api/compare/v1.0.2...v1.0.3) (2024-12-19)
+
+
+### Bug Fixes
+
+* **ci:** removed ecr image ([2db2acc](https://github.com/lgastler/shuto-api/commit/2db2acccc6e836c24306e4d7855d78f4ade0c646))
+
 ## [1.0.2](https://github.com/lgastler/shuto-api/compare/v1.0.1...v1.0.2) (2024-12-19)
 
 
