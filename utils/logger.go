@@ -9,6 +9,12 @@ import (
 
 var sugar *zap.SugaredLogger
 
+func init() {
+	// Initialize with a no-op logger by default
+	nop := zap.NewNop().Sugar()
+	sugar = nop
+}
+
 func InitLogger(level string) error {
 	// Convert string level to zapcore.Level
 	var zapLevel zapcore.Level
