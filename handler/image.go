@@ -54,9 +54,30 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 		ForceDownload: forceDownload,
 	}
 
+	utils.Debug("Processing image request", 
+		"domain", domain,
+		"path", path,
+		"remoteAddr", r.RemoteAddr,
+		"queryParams", r.URL.RawQuery,
+	)
+
+	utils.Debug("Image transform options",
+		"width", width,
+		"height", height,
+		"fit", fit,
+		"format", format,
+		"quality", quality,
+		"dpr", dpr,
+	)
+
 	// Fetch image data using rclone with domain-specific config
 	imgData, err := rclone.FetchImage(path, domain)
 	if err != nil {
+		utils.Error("Failed to fetch image",
+			"error", err,
+			"path", path,
+			"domain", domain,
+		)
 		http.Error(w, fmt.Sprintf("Failed to fetch image: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -64,18 +85,32 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 	// Transform the image
 	modifiedImg, err := imgUtils.TransformImage(imgData, options)
 	if err != nil {
+		utils.Error("Failed to transform image",
+			"error", err,
+			"path", path,
+			"options", options,
+		)
 		http.Error(w, fmt.Sprintf("Failed to transform image: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Set response headers and write the modified image as an HTTP response
 	mimeType, err := imgUtils.GetMimeType(modifiedImg)
 	if err != nil {
+		utils.Error("Failed to get image MIME type",
+			"error", err,
+			"path", path,
+		)
 		http.Error(w, fmt.Sprintf("Failed to get image format: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Set download header if requested
+	utils.Debug("Successfully processed image",
+		"path", path,
+		"mimeType", mimeType,
+		"outputSize", len(modifiedImg),
+	)
+
+	// Set response headers and write the modified image as an HTTP response
 	if forceDownload {
 		w.Header().Set("Content-Disposition", "attachment")
 	}

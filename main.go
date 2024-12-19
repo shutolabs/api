@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -14,14 +14,45 @@ import (
 )
 
 func main() {
-	// Initialize the Vips library
+	// Initialize logger first with error handling
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "info"
+	}
+	if err := utils.InitLogger(logLevel); err != nil {
+		fmt.Printf("Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Now we can safely use the logger
+	utils.Info("Initializing VIPS library")
+	customLoggingHandler := func(messageDomain string, messageLevel vips.LogLevel, message string) {
+		// switch over messageLevel and use utils to log
+		switch messageLevel {
+		case vips.LogLevelError:
+			utils.Error("VIPS error", "vips_message", message)
+		case vips.LogLevelWarning:
+			utils.Warn("VIPS warning", "vips_message", message)
+		case vips.LogLevelInfo:
+			utils.Info("VIPS info", "vips_message", message)
+		}
+	}
+
+	// Set logging settings with custom handler and desired verbosity level
+	vips.LoggingSettings(customLoggingHandler, vips.LogLevelWarning)
+
 	vips.Startup(nil)
 	defer vips.Shutdown()
 
 	// Load .env file
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		utils.Warn("No .env file found, using environment variables")
+	} else {
+		utils.Debug("Loaded environment variables from .env file")
+	}
 
 	// Initialize services and utilities
+	utils.Info("Initializing services")
 	imageUtils := utils.NewImageUtils()
 	executor := utils.NewCommandExecutor()
 	configManager := config.NewDomainConfigManager(&config.FileConfigLoader{}, "config/domains.yaml")
@@ -37,6 +68,7 @@ func main() {
 	}
 
 	// Register routes
+	utils.Info("Registering HTTP routes")
 	http.HandleFunc("/"+config.ApiVersion+"/image/", imageHandler)
 	http.HandleFunc("/"+config.ApiVersion+"/list/", listHandler)
 
@@ -48,9 +80,12 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
+		utils.Debug("No PORT environment variable found, using default", "port", "8080")
 	}
 
 	// Start server
-	log.Printf("Server is running on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	utils.Info("Starting server", "port", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		utils.Fatal("Server failed to start", "error", err)
+	}
 }

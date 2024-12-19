@@ -33,15 +33,21 @@ func NewImageUtils() ImageUtils {
 }
 
 func (iu *imageUtils) GetMimeType(data []byte) (string, error) {
+	Debug("Getting MIME type for image data",
+		"dataSize", len(data),
+	)
+
 	image, err := vips.NewImageFromBuffer(data)
 	if err != nil {
+		Error("Failed to create image from buffer",
+			"error", err,
+			"dataSize", len(data),
+		)
 		return "", fmt.Errorf("failed to create image from buffer: %v", err)
 	}
 	defer image.Close()
 
-	// Get the image format
 	format := image.Format()
-
 	var mimeType string
 	switch format {
 	case vips.ImageTypeJPEG:
@@ -52,16 +58,41 @@ func (iu *imageUtils) GetMimeType(data []byte) (string, error) {
 		mimeType = "image/webp"
 	}
 
+	Debug("Determined image MIME type",
+		"mimeType", mimeType,
+		"format", format,
+	)
 	return mimeType, nil
 }
 
 // New function to transform images
 func (iu *imageUtils) TransformImage(imgData []byte, opts ImageTransformOptions) ([]byte, error) {
+	Debug("Starting image transformation",
+		"inputSize", len(imgData),
+		"width", opts.Width,
+		"height", opts.Height,
+		"fit", opts.Fit,
+		"format", opts.Format,
+		"quality", opts.Quality,
+		"dpr", opts.Dpr,
+		"blur", opts.Blur,
+	)
+
 	image, err := vips.NewImageFromBuffer(imgData)
 	if err != nil {
+		Error("Failed to read image",
+			"error", err,
+			"inputSize", len(imgData),
+		)
 		return nil, fmt.Errorf("failed to read image: %v", err)
 	}
 	defer image.Close()
+
+	originalWidth, originalHeight := image.Width(), image.Height()
+	Debug("Original image dimensions",
+		"width", originalWidth,
+		"height", originalHeight,
+	)
 
 	// Apply DPR scaling
 	width := int(math.Round(float64(opts.Width) * opts.Dpr))
@@ -69,7 +100,7 @@ func (iu *imageUtils) TransformImage(imgData []byte, opts ImageTransformOptions)
 
 	// Apply fit modes according to spec
 	switch opts.Fit {
-	case "clip", "": // Default
+	case "clip", "":
 		if width == 0 && height == 0 {
 			width, height = image.Width(), image.Height()
 		} else if width == 0 {
@@ -87,31 +118,79 @@ func (iu *imageUtils) TransformImage(imgData []byte, opts ImageTransformOptions)
 			scale = scaleHeight
 		}
 
+		Debug("Applying clip resize",
+			"scale", scale,
+			"targetWidth", width,
+			"targetHeight", height,
+		)
+
 		if err := image.Resize(scale, vips.KernelAuto); err != nil {
+			Error("Failed to resize image",
+				"error", err,
+				"scale", scale,
+			)
 			return nil, fmt.Errorf("failed to resize image: %w", err)
 		}
+
 	case "crop":
+		Debug("Applying crop resize",
+			"targetWidth", width,
+			"targetHeight", height,
+		)
 		if err := image.Thumbnail(width, height, vips.InterestingCentre); err != nil {
+			Error("Failed to crop image",
+				"error", err,
+				"width", width,
+				"height", height,
+			)
 			return nil, fmt.Errorf("failed to crop image: %w", err)
 		}
+
 	case "fill":
-		if err := image.Resize(float64(width)/float64(image.Width()), vips.KernelAuto); err != nil {
+		scale := float64(width) / float64(image.Width())
+		Debug("Applying fill resize",
+			"scale", scale,
+			"targetWidth", width,
+		)
+		if err := image.Resize(scale, vips.KernelAuto); err != nil {
+			Error("Failed to fill image",
+				"error", err,
+				"scale", scale,
+			)
 			return nil, fmt.Errorf("failed to fill image: %w", err)
 		}
+
 	default:
+		Error("Invalid fit option provided",
+			"fit", opts.Fit,
+		)
 		return nil, errors.New("invalid fit option")
 	}
 
 	// Apply blur if specified
 	if opts.Blur > 0 {
-		sigma := float64(opts.Blur) * 0.3 // Convert blur parameter to sigma value
+		sigma := float64(opts.Blur) * 0.3
+		Debug("Applying blur",
+			"blur", opts.Blur,
+			"sigma", sigma,
+		)
 		if err := image.GaussianBlur(sigma); err != nil {
+			Error("Failed to apply blur",
+				"error", err,
+				"blur", opts.Blur,
+				"sigma", sigma,
+			)
 			return nil, fmt.Errorf("failed to apply blur: %w", err)
 		}
 	}
 
 	// Export with correct format
 	var modifiedImg []byte
+	Debug("Exporting image",
+		"format", opts.Format,
+		"quality", opts.Quality,
+	)
+
 	switch opts.Format {
 	case "jpg", "jpeg":
 		modifiedImg, _, err = image.ExportJpeg(&vips.JpegExportParams{Quality: opts.Quality})
@@ -120,9 +199,22 @@ func (iu *imageUtils) TransformImage(imgData []byte, opts ImageTransformOptions)
 	case "webp":
 		modifiedImg, _, err = image.ExportWebp(&vips.WebpExportParams{Quality: opts.Quality})
 	default:
-		// Default to original format
 		modifiedImg, _, err = image.ExportJpeg(&vips.JpegExportParams{Quality: opts.Quality})
 	}
 
-	return modifiedImg, err
+	if err != nil {
+		Error("Failed to export image",
+			"error", err,
+			"format", opts.Format,
+		)
+		return nil, fmt.Errorf("failed to export image: %w", err)
+	}
+
+	Debug("Image transformation completed",
+		"outputSize", len(modifiedImg),
+		"finalWidth", image.Width(),
+		"finalHeight", image.Height(),
+	)
+
+	return modifiedImg, nil
 }
