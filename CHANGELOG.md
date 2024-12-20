@@ -1,3 +1,11 @@
+## [1.1.1](https://github.com/lgastler/shuto-api/compare/v1.1.0...v1.1.1) (2024-12-20)
+
+
+### Bug Fixes
+
+* **cache:** added cache for image dimensions ([72cd03e](https://github.com/lgastler/shuto-api/commit/72cd03ef2a8738ab3cf87b93deb5c9c6daaa9fd7))
+* **list-res:** added omitempty to omit 0 ([aee03cd](https://github.com/lgastler/shuto-api/commit/aee03cd9b38e95a031ef43f376bcb0b42286ad13))
+
 # [1.1.0](https://github.com/lgastler/shuto-api/compare/v1.0.3...v1.1.0) (2024-12-20)
 
 
