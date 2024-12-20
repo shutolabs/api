@@ -20,8 +20,8 @@ type FileResponse struct {
 	Size     int64  `json:"size"`
 	MimeType string `json:"mimeType"`
 	IsDir    bool   `json:"isDir"`
-	Width    int  `json:"width"`
-	Height   int  `json:"height"`
+	Width    int  `json:"width,omitempty"`
+	Height   int  `json:"height,omitempty"`
 }
 
 // ListHandler processes listing of files based on the provided path
