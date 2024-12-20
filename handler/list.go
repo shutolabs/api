@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"shuto-api/config"
 	"shuto-api/utils"
@@ -22,6 +23,26 @@ type FileResponse struct {
 	IsDir    bool   `json:"isDir"`
 	Width    int  `json:"width,omitempty"`
 	Height   int  `json:"height,omitempty"`
+}
+
+// At package level
+var (
+	dimensionsCache *utils.Cache[ImageDimensions]
+)
+
+type ImageDimensions struct {
+	Width  int
+	Height int
+}
+
+func init() {
+	var err error
+	dimensionsCache, err = utils.NewCache[ImageDimensions](utils.CacheOptions{
+		MaxSize: 1000,
+	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 // ListHandler processes listing of files based on the provided path
@@ -62,13 +83,30 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 			if !strings.HasSuffix(path, "/" + file.Path) {
 				imgPath = path + "/" + file.Path
 			}
-			imgData, err := rclone.FetchImage(imgPath, domain)
+
+			dimensions, err := dimensionsCache.GetCached(utils.GetCachedOptions{
+				Key: imgPath,
+				TTL: 24 * time.Hour,
+				StaleTime: 1 * time.Hour,
+				GetFreshValue: func() (interface{}, error) {
+					imgData, err := rclone.FetchImage(imgPath, domain)
+					if err != nil {
+						return nil, err
+					}
+					width, height, err := imgUtils.GetImageDimensions(imgData)
+					if err != nil {
+						return nil, err
+					}
+					return ImageDimensions{
+						Width:  width,
+						Height: height,
+					}, nil
+				},
+			})
+
 			if err == nil {
-				width, height, err := imgUtils.GetImageDimensions(imgData)
-				if err == nil {
-					newFile.Width = width
-					newFile.Height = height
-				}
+				newFile.Width = dimensions.Width
+				newFile.Height = dimensions.Height
 			}
 		}
 
