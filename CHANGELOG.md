@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/lgastler/shuto-api/compare/v1.0.3...v1.1.0) (2024-12-20)
+
+
+### Features
+
+* **image-dimensions:** dimensions added for list endpoint ([cae3891](https://github.com/lgastler/shuto-api/commit/cae38918b16b6d41fc379247f830da0759c5745a))
+
 ## [1.0.3](https://github.com/lgastler/shuto-api/compare/v1.0.2...v1.0.3) (2024-12-19)
 
 
