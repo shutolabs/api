@@ -64,7 +64,7 @@ func TestListHandler(t *testing.T) {
 			]`),
 			expectedStatus: http.StatusOK,
 			checkBody: func(t *testing.T, body []byte) {
-				var files []utils.RcloneFile
+				var files []FileResponse
 				err := json.Unmarshal(body, &files)
 				if err != nil {
 					t.Fatalf("Failed to unmarshal response body: %v", err)
@@ -72,8 +72,8 @@ func TestListHandler(t *testing.T) {
 				if len(files) != 2 {
 					t.Errorf("Expected 2 files, got %d", len(files))
 				}
-				if files[0].Name != "file1.jpg" || files[1].Name != "dir1" {
-					t.Errorf("Unexpected file names in response")
+				if files[0].Width != 100 || files[0].Height != 100 {
+					t.Errorf("Unexpected image dimensions in response")
 				}
 			},
 		},
@@ -147,11 +147,16 @@ func TestListHandler(t *testing.T) {
 			}
 
 			rclone := utils.NewRclone(mockExecutor, mockConfigManager)
+			mockImageUtils := &MockImageUtils{
+				GetImageDimensionsFunc: func(data []byte) (int, int, error) {
+					return 100, 100, nil
+				},
+			}
 
 			req := httptest.NewRequest("GET", tt.path, nil)
 			rec := httptest.NewRecorder()
 
-			ListHandler(rec, req, rclone)
+			ListHandler(rec, req, mockImageUtils, rclone)
 
 			// Check status code
 			if rec.Code != tt.expectedStatus {

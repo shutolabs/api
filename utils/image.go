@@ -23,6 +23,7 @@ type ImageTransformOptions struct {
 type ImageUtils interface {
 	GetMimeType(data []byte) (string, error)
 	TransformImage(imgData []byte, opts ImageTransformOptions) ([]byte, error)
+	GetImageDimensions(data []byte) (width int, height int, err error)
 }
 
 // imageUtils is the concrete implementation of ImageUtils
@@ -217,4 +218,29 @@ func (iu *imageUtils) TransformImage(imgData []byte, opts ImageTransformOptions)
 	)
 
 	return modifiedImg, nil
+}
+
+func (iu *imageUtils) GetImageDimensions(data []byte) (width int, height int, err error) {
+	Debug("Getting image dimensions",
+		"dataSize", len(data),
+	)
+
+	image, err := vips.NewImageFromBuffer(data)
+	if err != nil {
+		Error("Failed to create image from buffer",
+			"error", err,
+			"dataSize", len(data),
+		)
+		return 0, 0, fmt.Errorf("failed to create image from buffer: %v", err)
+	}
+	defer image.Close()
+
+	width = image.Width()
+	height = image.Height()
+
+	Debug("Retrieved image dimensions",
+		"width", width,
+		"height", height,
+	)
+	return width, height, nil
 }

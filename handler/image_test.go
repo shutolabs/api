@@ -13,6 +13,7 @@ import (
 type MockImageUtils struct {
 	TransformImageFunc func([]byte, utils.ImageTransformOptions) ([]byte, error)
 	GetMimeTypeFunc   func([]byte) (string, error)
+	GetImageDimensionsFunc func([]byte) (int, int, error)
 }
 
 func (m *MockImageUtils) TransformImage(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
@@ -23,6 +24,10 @@ func (m *MockImageUtils) GetMimeType(data []byte) (string, error) {
 	return m.GetMimeTypeFunc(data)
 }
 
+func (m *MockImageUtils) GetImageDimensions(data []byte) (int, int, error) {
+	return m.GetImageDimensionsFunc(data)
+}
+
 func TestImageHandler(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -31,6 +36,7 @@ func TestImageHandler(t *testing.T) {
 		mockFetch      func(string, string) ([]byte, error)
 		mockTransform  func([]byte, utils.ImageTransformOptions) ([]byte, error)
 		mockMimeType   func([]byte) (string, error)
+		mockGetImageDimensions func([]byte) (int, int, error)
 		expectedStatus int
 		expectedMime   string
 		expectedHeaders map[string]string
@@ -192,6 +198,7 @@ func TestImageHandler(t *testing.T) {
 			mockImageUtils := &MockImageUtils{
 				TransformImageFunc: tt.mockTransform,
 				GetMimeTypeFunc:   tt.mockMimeType,
+				GetImageDimensionsFunc: tt.mockGetImageDimensions,
 			}
 
 			req := httptest.NewRequest("GET", tt.path, nil)

@@ -73,3 +73,44 @@ func TestTransformImage(t *testing.T) {
 		})
 	}
 }
+
+func TestGetImageDimensions(t *testing.T) {
+	imageUtils := NewImageUtils()
+
+	tests := []struct {
+		name           string
+		filePath      string
+		expectedWidth  int
+		expectedHeight int
+		expectError    bool
+	}{
+		{"JPEG Dimensions", "testdata/sample.jpeg", 3000, 2000, false},
+		{"PNG Dimensions", "testdata/sample.png", 3000, 2000, false},
+		{"WebP Dimensions", "testdata/sample.webp", 3000, 2000, false},
+		{"Invalid Image", "testdata/invalid.jpg", 0, 0, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Read the image file
+			imgData, err := os.ReadFile("../" + tt.filePath)
+			if err != nil && !tt.expectError {
+				t.Fatalf("failed to read image file: %v", err)
+			}
+
+			width, height, err := imageUtils.GetImageDimensions(imgData)
+			if (err != nil) != tt.expectError {
+				t.Fatalf("GetImageDimensions() returned an error: %v, expected error: %v", err, tt.expectError)
+			}
+
+			if !tt.expectError {
+				if width != tt.expectedWidth {
+					t.Errorf("GetImageDimensions() width = %v, expected %v", width, tt.expectedWidth)
+				}
+				if height != tt.expectedHeight {
+					t.Errorf("GetImageDimensions() height = %v, expected %v", height, tt.expectedHeight)
+				}
+			}
+		})
+	}
+}

@@ -64,7 +64,7 @@ func main() {
 	}
 
 	listHandler := func(w http.ResponseWriter, r *http.Request) {
-		handler.ListHandler(w, r, rclone)
+		handler.ListHandler(w, r, imageUtils, rclone)
 	}
 
 	// Register routes
