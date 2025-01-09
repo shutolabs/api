@@ -1,3 +1,16 @@
+# [1.2.0](https://github.com/lgastler/shuto-api/compare/v1.1.1...v1.2.0) (2025-01-09)
+
+
+### Bug Fixes
+
+* **image-metadata:** return keywords if only one ([16ac216](https://github.com/lgastler/shuto-api/commit/16ac216b4e5149e4ca2372b40b93cd514a64cf84))
+
+
+### Features
+
+* **download:** added download endpoint ([3e71c7f](https://github.com/lgastler/shuto-api/commit/3e71c7ffa1f15c819923d8fa30a314e6e1e5982b))
+* **image-metadata:** added keywords to image metadata ([8724591](https://github.com/lgastler/shuto-api/commit/87245910603a92d06df4c9e0f4f7f0977c78b016))
+
 ## [1.1.1](https://github.com/lgastler/shuto-api/compare/v1.1.0...v1.1.1) (2024-12-20)
 
 
