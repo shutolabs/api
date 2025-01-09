@@ -232,6 +232,33 @@ func (iu *imageUtils) TransformImage(imgData []byte, opts ImageTransformOptions)
 	return modifiedImg, nil
 }
 
+// Add this custom type for flexible keyword parsing
+type flexibleKeywords []string
+
+func (fk *flexibleKeywords) UnmarshalJSON(data []byte) error {
+	// Try array first
+	var strArray []string
+	if err := json.Unmarshal(data, &strArray); err == nil {
+		*fk = strArray
+		return nil
+	}
+
+	// Try single string
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		*fk = []string{str}
+		return nil
+	}
+
+	// If the field is null or empty
+	if string(data) == "null" || string(data) == `""` {
+		*fk = nil
+		return nil
+	}
+
+	return fmt.Errorf("unable to unmarshal keywords from: %s", string(data))
+}
+
 func (iu *imageUtils) GetImageMetadata(data []byte) (ImageMetadata, error) {
 	Debug("Getting image metadata",
 		"dataSize", len(data),
@@ -256,9 +283,9 @@ func (iu *imageUtils) GetImageMetadata(data []byte) (ImageMetadata, error) {
 
 	if err == nil {
 		var results []struct {
-			ImageWidth  int      `json:"ImageWidth"`
-			ImageHeight int      `json:"ImageHeight"`
-			Keywords    []string `json:"Keywords,omitempty"`
+			ImageWidth  int             `json:"ImageWidth"`
+			ImageHeight int             `json:"ImageHeight"`
+			Keywords    flexibleKeywords `json:"Keywords,omitempty"`
 		}
 		
 		if err := json.Unmarshal(output, &results); err != nil {

@@ -2,10 +2,9 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"time"
-
-	"os"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 )
