@@ -23,21 +23,17 @@ type FileResponse struct {
 	IsDir    bool   `json:"isDir"`
 	Width    int  `json:"width,omitempty"`
 	Height   int  `json:"height,omitempty"`
+	Keywords []string `json:"keywords,omitempty"`
 }
 
 // At package level
 var (
-	dimensionsCache *utils.Cache[ImageDimensions]
+	metadataCache *utils.Cache[utils.ImageMetadata]
 )
-
-type ImageDimensions struct {
-	Width  int
-	Height int
-}
 
 func init() {
 	var err error
-	dimensionsCache, err = utils.NewCache[ImageDimensions](utils.CacheOptions{
+	metadataCache, err = utils.NewCache[utils.ImageMetadata](utils.CacheOptions{
 		MaxSize: 1000,
 	})
 	if err != nil {
@@ -84,29 +80,27 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 				imgPath = path + "/" + file.Path
 			}
 
-			dimensions, err := dimensionsCache.GetCached(utils.GetCachedOptions{
+			metadata, err := metadataCache.GetCached(utils.GetCachedOptions{
 				Key: imgPath,
-				TTL: 24 * time.Hour,
+				TTL: 180 * 24 * time.Hour,
 				StaleTime: 1 * time.Hour,
 				GetFreshValue: func() (interface{}, error) {
 					imgData, err := rclone.FetchImage(imgPath, domain)
 					if err != nil {
-						return nil, err
+						return utils.ImageMetadata{}, err
 					}
-					width, height, err := imgUtils.GetImageDimensions(imgData)
+					metadata, err := imgUtils.GetImageMetadata(imgData)
 					if err != nil {
 						return nil, err
 					}
-					return ImageDimensions{
-						Width:  width,
-						Height: height,
-					}, nil
+					return metadata, nil
 				},
 			})
 
 			if err == nil {
-				newFile.Width = dimensions.Width
-				newFile.Height = dimensions.Height
+				newFile.Width = metadata.Width
+				newFile.Height = metadata.Height
+				newFile.Keywords = metadata.Keywords
 			}
 		}
 

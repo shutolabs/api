@@ -148,8 +148,8 @@ func TestListHandler(t *testing.T) {
 
 			rclone := utils.NewRclone(mockExecutor, mockConfigManager)
 			mockImageUtils := &MockImageUtils{
-				GetImageDimensionsFunc: func(data []byte) (int, int, error) {
-					return 100, 100, nil
+				GetImageMetadataFunc: func(data []byte) (utils.ImageMetadata, error) {
+					return utils.ImageMetadata{Width: 100, Height: 100}, nil
 				},
 			}
 

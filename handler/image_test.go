@@ -13,7 +13,7 @@ import (
 type MockImageUtils struct {
 	TransformImageFunc func([]byte, utils.ImageTransformOptions) ([]byte, error)
 	GetMimeTypeFunc   func([]byte) (string, error)
-	GetImageDimensionsFunc func([]byte) (int, int, error)
+	GetImageMetadataFunc func([]byte) (utils.ImageMetadata, error)
 }
 
 func (m *MockImageUtils) TransformImage(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
@@ -24,8 +24,8 @@ func (m *MockImageUtils) GetMimeType(data []byte) (string, error) {
 	return m.GetMimeTypeFunc(data)
 }
 
-func (m *MockImageUtils) GetImageDimensions(data []byte) (int, int, error) {
-	return m.GetImageDimensionsFunc(data)
+func (m *MockImageUtils) GetImageMetadata(data []byte) (utils.ImageMetadata, error) {
+	return m.GetImageMetadataFunc(data)
 }
 
 func TestImageHandler(t *testing.T) {
@@ -36,7 +36,7 @@ func TestImageHandler(t *testing.T) {
 		mockFetch      func(string, string) ([]byte, error)
 		mockTransform  func([]byte, utils.ImageTransformOptions) ([]byte, error)
 		mockMimeType   func([]byte) (string, error)
-		mockGetImageDimensions func([]byte) (int, int, error)
+		mockGetImageMetadata func([]byte) (utils.ImageMetadata, error)
 		expectedStatus int
 		expectedMime   string
 		expectedHeaders map[string]string
@@ -157,6 +157,9 @@ func TestImageHandler(t *testing.T) {
 			mockMimeType: func(data []byte) (string, error) {
 				return "image/jpeg", nil
 			},
+			mockGetImageMetadata: func(data []byte) (utils.ImageMetadata, error) {
+				return utils.ImageMetadata{Width: 100, Height: 100}, nil
+			},
 			expectedStatus: http.StatusOK,
 			expectedMime:   "image/jpeg",
 			expectedHeaders: map[string]string{
@@ -198,7 +201,7 @@ func TestImageHandler(t *testing.T) {
 			mockImageUtils := &MockImageUtils{
 				TransformImageFunc: tt.mockTransform,
 				GetMimeTypeFunc:   tt.mockMimeType,
-				GetImageDimensionsFunc: tt.mockGetImageDimensions,
+				GetImageMetadataFunc: tt.mockGetImageMetadata,
 			}
 
 			req := httptest.NewRequest("GET", tt.path, nil)

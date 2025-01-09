@@ -98,17 +98,17 @@ func TestGetImageDimensions(t *testing.T) {
 				t.Fatalf("failed to read image file: %v", err)
 			}
 
-			width, height, err := imageUtils.GetImageDimensions(imgData)
+			metadata, err := imageUtils.GetImageMetadata(imgData)
 			if (err != nil) != tt.expectError {
 				t.Fatalf("GetImageDimensions() returned an error: %v, expected error: %v", err, tt.expectError)
 			}
 
 			if !tt.expectError {
-				if width != tt.expectedWidth {
-					t.Errorf("GetImageDimensions() width = %v, expected %v", width, tt.expectedWidth)
+				if metadata.Width != tt.expectedWidth {
+					t.Errorf("GetImageDimensions() width = %v, expected %v", metadata.Width, tt.expectedWidth)
 				}
-				if height != tt.expectedHeight {
-					t.Errorf("GetImageDimensions() height = %v, expected %v", height, tt.expectedHeight)
+				if metadata.Height != tt.expectedHeight {
+					t.Errorf("GetImageDimensions() height = %v, expected %v", metadata.Height, tt.expectedHeight)
 				}
 			}
 		})

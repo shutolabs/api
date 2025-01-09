@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"os"
 
 	"github.com/davidbyttow/govips/v2/vips"
 )
@@ -19,18 +21,28 @@ type ImageTransformOptions struct {
 	ForceDownload bool
 }
 
+type ImageMetadata struct {
+	Width  int
+	Height int
+	Keywords []string
+}
+
 // ImageUtils interface for image operations
 type ImageUtils interface {
 	GetMimeType(data []byte) (string, error)
 	TransformImage(imgData []byte, opts ImageTransformOptions) ([]byte, error)
-	GetImageDimensions(data []byte) (width int, height int, err error)
+	GetImageMetadata(data []byte) (ImageMetadata, error)
 }
 
 // imageUtils is the concrete implementation of ImageUtils
-type imageUtils struct{}
+type imageUtils struct {
+	cmdExecutor CommandExecutor
+}
 
 func NewImageUtils() ImageUtils {
-	return &imageUtils{}
+	return &imageUtils{
+		cmdExecutor: NewCommandExecutor(),
+	}
 }
 
 func (iu *imageUtils) GetMimeType(data []byte) (string, error) {
@@ -220,27 +232,76 @@ func (iu *imageUtils) TransformImage(imgData []byte, opts ImageTransformOptions)
 	return modifiedImg, nil
 }
 
-func (iu *imageUtils) GetImageDimensions(data []byte) (width int, height int, err error) {
-	Debug("Getting image dimensions",
+func (iu *imageUtils) GetImageMetadata(data []byte) (ImageMetadata, error) {
+	Debug("Getting image metadata",
 		"dataSize", len(data),
 	)
 
+	// Create a temporary file to use with exiftool
+	tmpFile, err := os.CreateTemp("", "image-*")
+	if err != nil {
+		Error("Failed to create temp file", "error", err)
+		return ImageMetadata{}, fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	
+	if _, err := tmpFile.Write(data); err != nil {
+		Error("Failed to write temp file", "error", err)
+		return ImageMetadata{}, fmt.Errorf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	// Try exiftool first using CommandExecutor
+	output, err := iu.cmdExecutor.Execute("exiftool", "-j", "-ImageWidth", "-ImageHeight", "-Keywords", tmpFile.Name())
+
+	if err == nil {
+		var results []struct {
+			ImageWidth  int      `json:"ImageWidth"`
+			ImageHeight int      `json:"ImageHeight"`
+			Keywords    []string `json:"Keywords,omitempty"`
+		}
+		
+		if err := json.Unmarshal(output, &results); err != nil {
+			Error("Failed to unmarshal exiftool output",
+				"error", err,
+				"output", string(output),
+			)
+		} else if len(results) > 0 {
+			metadata := ImageMetadata{
+				Width:    results[0].ImageWidth,
+				Height:   results[0].ImageHeight,
+				Keywords: results[0].Keywords,
+			}
+			Debug("Retrieved metadata using exiftool",
+				"width", metadata.Width,
+				"height", metadata.Height,
+				"keywords", metadata.Keywords,
+			)
+			return metadata, nil
+		}
+	}
+
+	// Fallback to govips if exiftool fails
+	Debug("Falling back to govips")
 	image, err := vips.NewImageFromBuffer(data)
 	if err != nil {
 		Error("Failed to create image from buffer",
 			"error", err,
 			"dataSize", len(data),
 		)
-		return 0, 0, fmt.Errorf("failed to create image from buffer: %v", err)
+		return ImageMetadata{}, fmt.Errorf("failed to create image from buffer: %v", err)
 	}
 	defer image.Close()
 
-	width = image.Width()
-	height = image.Height()
+	metadata := ImageMetadata{
+		Width:    image.Width(),
+		Height:   image.Height(),
+		Keywords: nil,
+	}
 
-	Debug("Retrieved image dimensions",
-		"width", width,
-		"height", height,
+	Debug("Retrieved metadata using govips",
+		"width", metadata.Width,
+		"height", metadata.Height,
 	)
-	return width, height, nil
+	return metadata, nil
 }

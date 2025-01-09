@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"os"
+
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
@@ -12,8 +14,8 @@ type CacheEntry[T any] struct {
     Value      T
     CreatedAt  time.Time
     ExpiresAt  time.Time
-    StaleAt    time.Time    // New field for SWR
-    IsStale    bool         // Flag to track stale state
+    StaleAt    time.Time
+    IsStale    bool
 }
 
 type Cache[T any] struct {
@@ -28,7 +30,7 @@ type CacheOptions struct {
 type GetCachedOptions struct {
     Key           string
     TTL           time.Duration
-    StaleTime     time.Duration    // Time until data becomes stale
+    StaleTime     time.Duration
     GetFreshValue func() (interface{}, error)
 }
 
@@ -41,6 +43,10 @@ func NewCache[T any](opts CacheOptions) (*Cache[T], error) {
 }
 
 func (c *Cache[T]) GetCached(opts GetCachedOptions) (T, error) {
+    if os.Getenv("GO_ENV") == "development" {
+        return c.getDirectValue(opts)
+    }
+
     var empty T
     now := time.Now()
 
@@ -111,5 +117,20 @@ func (c *Cache[T]) getFreshValue(opts GetCachedOptions) (T, error) {
     }
     c.cache.Add(opts.Key, entry)
 
+    return typedValue, nil
+}
+
+func (c *Cache[T]) getDirectValue(opts GetCachedOptions) (T, error) {
+    var empty T
+    value, err := opts.GetFreshValue()
+    if err != nil {
+        return empty, err
+    }
+
+    typedValue, ok := value.(T)
+    if !ok {
+        return empty, fmt.Errorf("value type assertion failed")
+    }
+    
     return typedValue, nil
 } 
