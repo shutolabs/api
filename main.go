@@ -67,10 +67,15 @@ func main() {
 		handler.ListHandler(w, r, imageUtils, rclone)
 	}
 
+	downloadHandler := func(w http.ResponseWriter, r *http.Request) {
+		handler.DownloadHandler(w, r, imageUtils, rclone)
+	}
+
 	// Register routes
 	utils.Info("Registering HTTP routes")
 	http.HandleFunc("/"+config.ApiVersion+"/image/", imageHandler)
 	http.HandleFunc("/"+config.ApiVersion+"/list/", listHandler)
+	http.HandleFunc("/"+config.ApiVersion+"/download/", downloadHandler)
 
 	// host swaggerui
 	fs := http.FileServer(http.Dir("./public/swaggerui"))
