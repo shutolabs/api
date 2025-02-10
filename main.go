@@ -51,7 +51,7 @@ func main() {
 	rclone := utils.NewRclone(executor, configManager)
 
 	http.HandleFunc("/"+config.ApiVersion+"/image/", func(w http.ResponseWriter, r *http.Request) {
-		handler.ImageHandler(w, r, imageUtils, rclone)
+		handler.ImageHandler(w, r, imageUtils, rclone, configManager)
 	})
 	http.HandleFunc("/"+config.ApiVersion+"/list/", func(w http.ResponseWriter, r *http.Request) {
 		handler.ListHandler(w, r, imageUtils, rclone)

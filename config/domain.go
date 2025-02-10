@@ -12,9 +12,28 @@ type RcloneConfig struct {
 	Flags []string
 }
 
+type SecurityMode string
+
+const (
+	HMACTimebound SecurityMode = "hmac_timebound"
+	HMACTimeless  SecurityMode = "hmac_timeless"
+)
+
+type SecuritySettings struct {
+	Mode           SecurityMode  `yaml:"mode"`
+	Secrets        []SecretKey   `yaml:"secrets"`
+	ValidityWindow int          `yaml:"validity_window"` // in seconds
+}
+
+type SecretKey struct {
+	KeyID  string `yaml:"key_id"`
+	Secret string `yaml:"secret"`
+}
+
 // DomainConfig represents configuration for a specific domain
 type DomainConfig struct {
-	Rclone RcloneConfig
+	Rclone   RcloneConfig     `yaml:"rclone"`
+	Security SecuritySettings  `yaml:"security"`
 }
 
 type DomainsConfig struct {
