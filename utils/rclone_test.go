@@ -31,7 +31,7 @@ func TestFetchImage(t *testing.T) {
 
 	imageData, err := rclone.FetchImage("mock/path", "test")
 	assert.Error(t, err)
-	assert.Equal(t, "failed to fetch image with rclone: mock error", err.Error())
+	assert.Equal(t, "failed to fetch image: rclone command failed: mock error", err.Error())
 	assert.Nil(t, imageData)
 
 	// Test config manager error
@@ -87,7 +87,7 @@ func TestListPath(t *testing.T) {
 
 	files, err = rclone.ListPath("mock/path", "test")
 	assert.Error(t, err)
-	assert.Equal(t, "error executing rclone lsjson: mock error", err.Error())
+	assert.Equal(t, "failed to list path: rclone command failed: mock error", err.Error())
 	assert.Nil(t, files)
 
 	// Test config manager error

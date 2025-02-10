@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,13 +11,9 @@ import (
 
 // ImageHandler processes image transformations based on query parameters
 func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone) {
-	// Get domain configuration
 	domain := utils.GetDomainFromRequest(r)
-
-	// Extract path and parameters
 	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/image/")
 	
-	// Parse parameters according to spec
 	width, _ := strconv.Atoi(r.URL.Query().Get("w"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("h"))
 	fit := r.URL.Query().Get("fit")
@@ -57,60 +52,36 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 	utils.Debug("Processing image request", 
 		"domain", domain,
 		"path", path,
-		"remoteAddr", r.RemoteAddr,
-		"queryParams", r.URL.RawQuery,
+		"options", options,
 	)
 
-	utils.Debug("Image transform options",
-		"width", width,
-		"height", height,
-		"fit", fit,
-		"format", format,
-		"quality", quality,
-		"dpr", dpr,
-	)
-
-	// Fetch image data using rclone with domain-specific config
 	imgData, err := rclone.FetchImage(path, domain)
 	if err != nil {
-		utils.Error("Failed to fetch image",
-			"error", err,
-			"path", path,
-			"domain", domain,
-		)
-		http.Error(w, fmt.Sprintf("Failed to fetch image: %v", err), http.StatusInternalServerError)
+		utils.Error("Failed to fetch image", "error", err, "path", path)
+		http.Error(w, "Failed to fetch image", http.StatusInternalServerError)
 		return
 	}
 
-	// Transform the image
 	modifiedImg, err := imgUtils.TransformImage(imgData, options)
 	if err != nil {
-		utils.Error("Failed to transform image",
-			"error", err,
-			"path", path,
-			"options", options,
-		)
-		http.Error(w, fmt.Sprintf("Failed to transform image: %v", err), http.StatusInternalServerError)
+		utils.Error("Failed to transform image", "error", err, "options", options)
+		http.Error(w, "Failed to transform image", http.StatusInternalServerError)
 		return
 	}
 
 	mimeType, err := imgUtils.GetMimeType(modifiedImg)
 	if err != nil {
-		utils.Error("Failed to get image MIME type",
-			"error", err,
-			"path", path,
-		)
-		http.Error(w, fmt.Sprintf("Failed to get image format: %v", err), http.StatusInternalServerError)
+		utils.Error("Failed to get MIME type", "error", err)
+		http.Error(w, "Failed to process image", http.StatusInternalServerError)
 		return
 	}
 
-	utils.Debug("Successfully processed image",
+	utils.Debug("Image processed successfully",
 		"path", path,
 		"mimeType", mimeType,
-		"outputSize", len(modifiedImg),
+		"size", len(modifiedImg),
 	)
 
-	// Set response headers and write the modified image as an HTTP response
 	if forceDownload {
 		w.Header().Set("Content-Disposition", "attachment")
 	}

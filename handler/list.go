@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -17,19 +16,16 @@ type Utils interface {
 }
 
 type FileResponse struct {
-	Path     string `json:"path"`
-	Size     int64  `json:"size"`
-	MimeType string `json:"mimeType"`
-	IsDir    bool   `json:"isDir"`
-	Width    int  `json:"width,omitempty"`
-	Height   int  `json:"height,omitempty"`
-	Keywords []string `json:"keywords,omitempty"`
+	Path     string    `json:"path"`
+	Size     int64     `json:"size"`
+	MimeType string    `json:"mimeType"`
+	IsDir    bool      `json:"isDir"`
+	Width    int       `json:"width,omitempty"`
+	Height   int       `json:"height,omitempty"`
+	Keywords []string  `json:"keywords,omitempty"`
 }
 
-// At package level
-var (
-	metadataCache *utils.Cache[utils.ImageMetadata]
-)
+var metadataCache *utils.Cache[utils.ImageMetadata]
 
 func init() {
 	var err error
@@ -46,24 +42,15 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 	domain := utils.GetDomainFromRequest(r)
 	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/list/")
 	
-	utils.Debug("Processing list request", 
-		"domain", domain,
-		"path", path,
-		"remoteAddr", r.RemoteAddr,
-	)
+	utils.Debug("Processing list request", "domain", domain, "path", path)
 
 	files, err := rclone.ListPath(path, domain)
 	if err != nil {
-		utils.Error("Failed to list directory contents",
-			"error", err,
-			"path", path,
-			"domain", domain,
-		)
-		http.Error(w, fmt.Sprintf("Failed to list directory contents: %v", err), http.StatusInternalServerError)
+		utils.Error("Failed to list directory", "error", err, "path", path)
+		http.Error(w, "Failed to list directory", http.StatusInternalServerError)
 		return
 	}
 
-	// Prepare response with image dimensions
 	response := make([]FileResponse, len(files))
 	for i, file := range files {
 		newFile := FileResponse{
@@ -73,7 +60,6 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 			IsDir:    file.IsDir,
 		}
 
-		// Get image dimensions if the file is an image
 		if !file.IsDir && strings.HasPrefix(file.MimeType, "image/") {
 			imgPath := path
 			if !strings.HasSuffix(path, "/" + file.Path) {
@@ -82,18 +68,14 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 
 			metadata, err := metadataCache.GetCached(utils.GetCachedOptions{
 				Key: imgPath,
-				TTL: 180 * 24 * time.Hour,
-				StaleTime: 1 * time.Hour,
+				TTL: 24 * time.Hour,
+				StaleTime: time.Hour,
 				GetFreshValue: func() (interface{}, error) {
 					imgData, err := rclone.FetchImage(imgPath, domain)
 					if err != nil {
 						return utils.ImageMetadata{}, err
 					}
-					metadata, err := imgUtils.GetImageMetadata(imgData)
-					if err != nil {
-						return nil, err
-					}
-					return metadata, nil
+					return imgUtils.GetImageMetadata(imgData)
 				},
 			})
 
@@ -101,6 +83,8 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 				newFile.Width = metadata.Width
 				newFile.Height = metadata.Height
 				newFile.Keywords = metadata.Keywords
+			} else {
+				utils.Debug("Failed to get image metadata", "error", err, "path", imgPath)
 			}
 		}
 
@@ -109,18 +93,12 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 
 	data, err := json.Marshal(response)
 	if err != nil {
-		utils.Error("Failed to encode JSON response",
-			"error", err,
-			"filesCount", len(files),
-		)
-		http.Error(w, fmt.Sprintf("Failed to encode json: %v", err), http.StatusInternalServerError)
+		utils.Error("Failed to encode response", "error", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
 
-	utils.Debug("Successfully listed directory",
-		"path", path,
-		"filesCount", len(files),
-	)
+	utils.Debug("Directory listed successfully", "path", path, "count", len(files))
 	
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)

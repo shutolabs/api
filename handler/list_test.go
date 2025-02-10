@@ -98,7 +98,7 @@ func TestListHandler(t *testing.T) {
 			path:           "http://test/v1/list/error",
 			mockListError:  fmt.Errorf("error executing rclone lsjson: failed to list directory"),
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to list directory contents: error executing rclone lsjson: error executing rclone lsjson: failed to list directory\n",
+			expectedBody:   "Failed to list directory\n",
 		},
 		{
 			name: "Root path listing",

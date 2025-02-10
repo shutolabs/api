@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"fmt"
 	"os/exec"
 )
 
@@ -29,10 +30,20 @@ func NewCommandExecutor() CommandExecutor {
 // Execute runs the command and returns the output
 func (e *execCommand) Execute(command string, args ...string) ([]byte, error) {
 	cmd := exec.Command(command, args...)
-	var output bytes.Buffer
-	cmd.Stdout = &output
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		if stderr.Len() > 0 {
+			return nil, fmt.Errorf("command failed: %w: %s", err, stderr.String())
+		}
+		return nil, fmt.Errorf("command failed: %w", err)
 	}
-	return output.Bytes(), nil
+
+	if stderr.Len() > 0 {
+		Debug("Command produced stderr output", "command", command, "stderr", stderr.String())
+	}
+
+	return stdout.Bytes(), nil
 } 
