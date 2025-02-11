@@ -55,6 +55,15 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 		"options", options,
 	)
 
+	// Check if path is a directory by listing its contents
+	files, err := rclone.ListPath(path, domain)
+	if err == nil && len(files) > 0 {
+		// If we got files back, this means the path is a directory
+		utils.Error("Cannot serve directory as image", "path", path)
+		http.Error(w, "Cannot serve directory as image", http.StatusBadRequest)
+		return
+	}
+
 	imgData, err := rclone.FetchImage(path, domain)
 	if err != nil {
 		utils.Error("Failed to fetch image", "error", err, "path", path)
