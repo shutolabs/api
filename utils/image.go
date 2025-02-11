@@ -5,6 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/davidbyttow/govips/v2/vips"
 )
@@ -170,4 +174,64 @@ func (iu *imageUtils) GetImageMetadata(data []byte) (ImageMetadata, error) {
 		Height:   image.Height(),
 		Keywords: nil, // VIPS doesn't support reading IPTC keywords
 	}, nil
+}
+
+// IsImageFile checks if a file is an image based on its extension
+func IsImageFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".webp":
+		return true
+	default:
+		return false
+	}
+}
+
+// ParseImageOptionsFromRequest extracts image transformation options from request query parameters
+func ParseImageOptionsFromRequest(r *http.Request) ImageTransformOptions {
+	width, _ := strconv.Atoi(r.URL.Query().Get("w"))
+	height, _ := strconv.Atoi(r.URL.Query().Get("h"))
+	fit := r.URL.Query().Get("fit")
+	if fit == "" {
+		fit = "clip" // Default as per spec
+	}
+	
+	dpr, err := strconv.ParseFloat(r.URL.Query().Get("dpr"), 64)
+	if err != nil || dpr == 0 {
+		dpr = 1.0 // Default as per spec
+	}
+	if dpr > 3.0 {
+		dpr = 3.0 // Max value as per spec
+	}
+	
+	format := r.URL.Query().Get("fm")
+	quality, err := strconv.Atoi(r.URL.Query().Get("q"))
+	if err != nil || quality == 0 {
+		quality = 75 // Default as per spec
+	}
+	
+	blur, _ := strconv.Atoi(r.URL.Query().Get("blur"))
+	forceDownload := r.URL.Query().Get("dl") == "1"
+
+	return ImageTransformOptions{
+		Width:         width,
+		Height:        height,
+		Fit:          fit,
+		Format:       format,
+		Quality:      quality,
+		Dpr:          dpr,
+		Blur:         blur,
+		ForceDownload: forceDownload,
+	}
+}
+
+// HasImageTransformParams checks if any image transformation parameters are present in the request
+func HasImageTransformParams(r *http.Request) bool {
+	params := []string{"w", "h", "fit", "dpr", "fm", "q", "blur"}
+	for _, param := range params {
+		if r.URL.Query().Get(param) != "" {
+			return true
+		}
+	}
+	return false
 }

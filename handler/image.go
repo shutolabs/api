@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"shuto-api/config"
@@ -30,7 +29,6 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 		return
 	}
 
-
 	// Validate signed URL if security is enabled
 	if cfg.Security.Mode != "" {
 		if err := security.ValidateSignedURLFromConfig(path, r.URL.Query(), cfg.Security.Secrets, cfg.Security.ValidityWindow); err != nil {
@@ -48,41 +46,8 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 			return
 		}
 	}
-	
-	width, _ := strconv.Atoi(r.URL.Query().Get("w"))
-	height, _ := strconv.Atoi(r.URL.Query().Get("h"))
-	fit := r.URL.Query().Get("fit")
-	if fit == "" {
-		fit = "clip" // Default as per spec
-	}
-	
-	dpr, err := strconv.ParseFloat(r.URL.Query().Get("dpr"), 64)
-	if err != nil || dpr == 0 {
-		dpr = 1.0 // Default as per spec
-	}
-	if dpr > 3.0 {
-		dpr = 3.0 // Max value as per spec
-	}
-	
-	format := r.URL.Query().Get("fm")
-	quality, err := strconv.Atoi(r.URL.Query().Get("q"))
-	if err != nil || quality == 0 {
-		quality = 75 // Default as per spec
-	}
-	
-	blur, _ := strconv.Atoi(r.URL.Query().Get("blur"))
-	forceDownload := r.URL.Query().Get("dl") == "1"
 
-	options := utils.ImageTransformOptions{
-		Width:         width,
-		Height:        height,
-		Fit:          fit,
-		Format:       format,
-		Quality:      quality,
-		Dpr:          dpr,
-		Blur:         blur,
-		ForceDownload: forceDownload,
-	}
+	options := utils.ParseImageOptionsFromRequest(r)
 
 	utils.Debug("Processing image request", 
 		"domain", domain,
@@ -117,7 +82,7 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 		"size", len(modifiedImg),
 	)
 
-	if forceDownload {
+	if options.ForceDownload {
 		w.Header().Set("Content-Disposition", "attachment")
 	}
 

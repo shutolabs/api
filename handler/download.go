@@ -57,6 +57,42 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request, imageUtils utils.Im
 		return
 	}
 
+	// If no files found or only one file that's not a directory, treat as single file download
+	if len(files) == 0 || (len(files) == 1 && !files[0].IsDir) {
+		handleSingleFileDownload(w, r, path, domain, imageUtils, rclone)
+		return
+	}
+
+	// Handle folder download with multiple files
+	handleFolderDownload(w, r, path, files, domain, imageUtils, rclone)
+}
+
+func handleSingleFileDownload(w http.ResponseWriter, r *http.Request, path string, domain string, imageUtils utils.ImageUtils, rclone utils.Rclone) {
+	content, err := rclone.FetchImage(path, domain)
+	if err != nil {
+		utils.Error("Failed to fetch file", "error", err, "path", path)
+		http.Error(w, "Failed to fetch file", http.StatusInternalServerError)
+		return
+	}
+
+	// Process image if it's an image file and has transformation parameters
+	if utils.IsImageFile(path) && utils.HasImageTransformParams(r) {
+		options := utils.ParseImageOptionsFromRequest(r)
+		content, err = imageUtils.TransformImage(content, options)
+		if err != nil {
+			utils.Error("Failed to transform image", "error", err, "options", options)
+			http.Error(w, "Failed to transform image", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	mimeType := http.DetectContentType(content)
+	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+filepath.Base(path)+"\"")
+	w.Write(content)
+}
+
+func handleFolderDownload(w http.ResponseWriter, r *http.Request, path string, files []utils.RcloneFile, domain string, imageUtils utils.ImageUtils, rclone utils.Rclone) {
 	var totalSize int64
 	for _, file := range files {
 		if !file.IsDir {
@@ -77,6 +113,9 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request, imageUtils utils.Im
 	zipWriter := zip.NewWriter(w)
 	defer zipWriter.Close()
 
+	options := utils.ParseImageOptionsFromRequest(r)
+	hasTransformParams := utils.HasImageTransformParams(r)
+
 	for _, file := range files {
 		if file.IsDir {
 			continue
@@ -87,6 +126,15 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request, imageUtils utils.Im
 		if err != nil {
 			utils.Error("Failed to fetch file", "error", err, "file", filePath)
 			continue
+		}
+
+		// Process image if it's an image file and has transformation parameters
+		if hasTransformParams && utils.IsImageFile(filePath) {
+			content, err = imageUtils.TransformImage(content, options)
+			if err != nil {
+				utils.Error("Failed to transform image", "error", err, "file", filePath)
+				continue
+			}
 		}
 
 		f, err := zipWriter.Create(file.Name)
