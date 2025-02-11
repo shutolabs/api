@@ -50,8 +50,8 @@ func TestDownloadHandler(t *testing.T) {
 			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusOK,
 			expectedHeaders: map[string]string{
-				"Content-Type": "application/zip",
-				"Content-Disposition": "attachment; filename=\"test.jpg.zip\"",
+				"Content-Type": "text/plain; charset=utf-8",
+				"Content-Disposition": "attachment; filename=\"test.jpg\"",
 			},
 		},
 		{
@@ -96,8 +96,12 @@ func TestDownloadHandler(t *testing.T) {
 			path: "/download/large-folder",
 			mockList: func(path, domain string) ([]utils.RcloneFile, error) {
 				return []utils.RcloneFile{
-					{Name: "large.file", Size: 2 * 1024 * 1024 * 1024, IsDir: false}, // 2GB
+					{Name: "large1.file", Size: 1 * 1024 * 1024 * 1024, IsDir: false}, // 1GB
+					{Name: "large2.file", Size: 1 * 1024 * 1024 * 1024, IsDir: false}, // 1GB
 				}, nil
+			},
+			mockFetch: func(path, domain string) ([]byte, error) {
+				return []byte("test-data"), nil
 			},
 			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusBadRequest,

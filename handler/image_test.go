@@ -58,7 +58,7 @@ func TestImageHandler(t *testing.T) {
 	}{
 		{
 			name: "Basic resize with defaults",
-			path: "/image/test.jpg",
+			path: "/v1/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "100",
 				"h": "100",
@@ -84,7 +84,7 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "Full parameter test",
-			path: "/image/test.jpg",
+			path: "/v1/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "300",
 				"h": "200",
@@ -119,7 +119,11 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "Failed to fetch image",
-			path: "/image/nonexistent.jpg",
+			path: "/v1/image/nonexistent.jpg",
+			queryParams: map[string]string{
+				"w": "100",
+				"h": "100",
+			},
 			mockFetch: func(remote, path string) ([]byte, error) {
 				return nil, fmt.Errorf("image not found")
 			},
@@ -134,19 +138,30 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "Failed to transform image",
-			path: "/image/test.jpg",
+			path: "/v1/image/test.jpg",
+			queryParams: map[string]string{
+				"w": "100",
+				"h": "100",
+			},
 			mockFetch: func(remote, path string) ([]byte, error) {
 				return []byte("mock-image-data"), nil
 			},
 			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
 				return nil, fmt.Errorf("transform error")
 			},
+			mockMimeType: func(data []byte) (string, error) {
+				return "", nil
+			},
 			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusInternalServerError,
 		},
 		{
 			name: "Failed to get mime type",
-			path: "/image/test.jpg",
+			path: "/v1/image/test.jpg",
+			queryParams: map[string]string{
+				"w": "100",
+				"h": "100",
+			},
 			mockFetch: func(remote, path string) ([]byte, error) {
 				return []byte("mock-image-data"), nil
 			},
@@ -161,7 +176,7 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "Default DPR value",
-			path: "/image/test.jpg",
+			path: "/v1/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "100", "h": "100",
 			},
@@ -189,7 +204,7 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "DPR value > 3",
-			path: "/image/test.jpg",
+			path: "/v1/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "100", "h": "100", "dpr": "3.1",
 			},
@@ -218,12 +233,20 @@ func TestImageHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRclone := &utils.MockRclone{
 				FetchImageFunc: tt.mockFetch,
+				ListPathFunc: func(path, domain string) ([]utils.RcloneFile, error) {
+					return []utils.RcloneFile{}, nil
+				},
 			}
 
 			mockImageUtils := &MockImageUtils{
 				TransformImageFunc: tt.mockTransform,
 				GetMimeTypeFunc:   tt.mockMimeType,
-				GetImageMetadataFunc: tt.mockGetImageMetadata,
+				GetImageMetadataFunc: func(data []byte) (utils.ImageMetadata, error) {
+					if tt.mockGetImageMetadata != nil {
+						return tt.mockGetImageMetadata(data)
+					}
+					return utils.ImageMetadata{Width: 100, Height: 100}, nil
+				},
 			}
 
 			mockDomainConfig := &MockDomainConfigManager{
@@ -236,6 +259,7 @@ func TestImageHandler(t *testing.T) {
 				q.Add(k, v)
 			}
 			req.URL.RawQuery = q.Encode()
+			req.Host = "test.domain.com"
 
 			rr := httptest.NewRecorder()
 			ImageHandler(rr, req, mockImageUtils, mockRclone, mockDomainConfig)
@@ -245,13 +269,13 @@ func TestImageHandler(t *testing.T) {
 			}
 
 			if tt.expectedStatus == http.StatusOK {
-				if contentType := rr.Header().Get("Content-Type"); contentType != tt.expectedMime {
-					t.Errorf("expected Content-Type %s, got %s", tt.expectedMime, contentType)
+				if got := rr.Header().Get("Content-Type"); got != tt.expectedMime {
+					t.Errorf("expected Content-Type %s, got %s", tt.expectedMime, got)
 				}
 
-				for k, v := range tt.expectedHeaders {
-					if rr.Header().Get(k) != v {
-						t.Errorf("expected %s header %s, got %s", k, v, rr.Header().Get(k))
+				for header, expected := range tt.expectedHeaders {
+					if got := rr.Header().Get(header); got != expected {
+						t.Errorf("expected %s header %s, got %s", header, expected, got)
 					}
 				}
 			}
