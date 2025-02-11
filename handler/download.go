@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"shuto-api/config"
+	"shuto-api/security"
 	"shuto-api/utils"
 )
 
-func DownloadHandler(w http.ResponseWriter, r *http.Request, imageUtils utils.ImageUtils, rclone utils.Rclone) {
+func DownloadHandler(w http.ResponseWriter, r *http.Request, imageUtils utils.ImageUtils, rclone utils.Rclone, domainConfig config.DomainConfigManager) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -21,6 +22,30 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request, imageUtils utils.Im
 	if path == "" {
 		http.Error(w, "Path is required", http.StatusBadRequest)
 		return
+	}
+
+	cfg, err := domainConfig.GetDomainConfig(domain)
+	if err != nil {
+		utils.Error("Failed to get domain config", "error", err, "domain", domain)
+		http.Error(w, "Invalid domain", http.StatusBadRequest)
+		return
+	}
+
+	if cfg.Security.Mode != "" {
+		if err := security.ValidateSignedURLFromConfig(path, r.URL.Query(), cfg.Security.Secrets, cfg.Security.ValidityWindow); err != nil {
+			utils.Error("Invalid signed URL", "error", err, "path", path)
+			var status int
+			switch err {
+			case security.ErrKeyNotFound:
+				status = http.StatusUnauthorized
+			case security.ErrExpiredURL:
+				status = http.StatusGone
+			default:
+				status = http.StatusForbidden
+			}
+			http.Error(w, err.Error(), status)
+			return
+		}
 	}
 
 	utils.Debug("Processing download request", "domain", domain, "path", path)

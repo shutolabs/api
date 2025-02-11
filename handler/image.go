@@ -10,11 +10,19 @@ import (
 	"shuto-api/utils"
 )
 
-// ImageHandler processes image transformations based on query parameters
 func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone, domainConfig config.DomainConfigManager) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	domain := utils.GetDomainFromRequest(r)
+	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/image/")
+	if path == "" {
+		http.Error(w, "Path is required", http.StatusBadRequest)
+		return
+	}
 	
-	// Get domain configuration
 	cfg, err := domainConfig.GetDomainConfig(domain)
 	if err != nil {
 		utils.Error("Failed to get domain config", "error", err, "domain", domain)
@@ -22,27 +30,10 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 		return
 	}
 
-	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/image/")
 
 	// Validate signed URL if security is enabled
 	if cfg.Security.Mode != "" {
-		// Convert config secrets to security.SecretKey
-		keys := make([]security.SecretKey, len(cfg.Security.Secrets))
-		for i, secret := range cfg.Security.Secrets {
-			keys[i] = security.SecretKey{
-				ID:     secret.KeyID,
-				Secret: []byte(secret.Secret),
-			}
-		}
-
-		signer, err := security.NewURLSigner(keys, cfg.Security.ValidityWindow, "")
-		if err != nil {
-			utils.Error("Failed to create URL signer", "error", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		if err := signer.ValidateSignedURL(path, r.URL.Query()); err != nil {
+		if err := security.ValidateSignedURLFromConfig(path, r.URL.Query(), cfg.Security.Secrets, cfg.Security.ValidityWindow); err != nil {
 			utils.Error("Invalid signed URL", "error", err, "path", path)
 			var status int
 			switch err {

@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"shuto-api/config"
 )
 
 var (
@@ -178,4 +180,23 @@ func (s *URLSigner) validateTimelessURL(path string, params url.Values, provided
 	}
 
 	return nil
+}
+
+// ValidateSignedURLFromConfig validates a signed URL using the provided security configuration
+func ValidateSignedURLFromConfig(path string, query url.Values, secrets []config.SecretKey, validityWindow int) error {
+	// Convert config secrets to security.SecretKey
+	keys := make([]SecretKey, len(secrets))
+	for i, secret := range secrets {
+		keys[i] = SecretKey{
+			ID:     secret.KeyID,
+			Secret: []byte(secret.Secret),
+		}
+	}
+
+	signer, err := NewURLSigner(keys, validityWindow, "")
+	if err != nil {
+		return fmt.Errorf("failed to create URL signer: %w", err)
+	}
+
+	return signer.ValidateSignedURL(path, query)
 } 

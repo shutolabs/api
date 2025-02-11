@@ -57,7 +57,7 @@ func main() {
 		handler.ListHandler(w, r, imageUtils, rclone)
 	})
 	http.HandleFunc("/"+config.ApiVersion+"/download/", func(w http.ResponseWriter, r *http.Request) {
-		handler.DownloadHandler(w, r, imageUtils, rclone)
+		handler.DownloadHandler(w, r, imageUtils, rclone, configManager)
 	})
 
 	fs := http.FileServer(http.Dir("./public/swaggerui"))
