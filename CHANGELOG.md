@@ -1,3 +1,24 @@
+# [1.3.0](https://github.com/lgastler/shuto-api/compare/v1.2.0...v1.3.0) (2025-02-11)
+
+
+### Bug Fixes
+
+* **cli:** restructure CLI with command pattern and modular design ([6c9ffb2](https://github.com/lgastler/shuto-api/commit/6c9ffb2dd29b0d14849c2f067ff06d186faa8606))
+* **image:** prevent serving directories as images ([51238c7](https://github.com/lgastler/shuto-api/commit/51238c77135ed94768405de74dbd5d0ccfc29a62))
+* **images:** extract image transformation logic and add utility functions ([c94af8b](https://github.com/lgastler/shuto-api/commit/c94af8b7b887a1031643085c8bc9e3fff7646978))
+* **tests:** add domain config mocking for image handler tests ([7a800f8](https://github.com/lgastler/shuto-api/commit/7a800f88723676d659f30d455ddc87a39ee4e812))
+* **tests:** update test cases for download and image handlers ([1900517](https://github.com/lgastler/shuto-api/commit/19005175ea21df34503199d72a9ffe72c31297a8))
+
+
+### Features
+
+* **cli:** add CLI tool for generating signed URLs ([92bd0d6](https://github.com/lgastler/shuto-api/commit/92bd0d6b9f1a6a77732e98a4b3f96510b7cee2c8))
+* **download:** implement parallel file processing for folder downloads ([d506e18](https://github.com/lgastler/shuto-api/commit/d506e188c6c308e3e40617c7bd7a926accecff98))
+* **image:** add automatic format selection based on browser support ([7244828](https://github.com/lgastler/shuto-api/commit/7244828ab1124da2e91bb7520cda072c5d0a419b))
+* **security:** add endpoint parameter to URL signer ([d6951ee](https://github.com/lgastler/shuto-api/commit/d6951ee248aa5a13356406c24266c4af98c4a486))
+* **security:** add signed URL validation for download endpoint ([bcaccc5](https://github.com/lgastler/shuto-api/commit/bcaccc5134b634c75a8e30818dc22a4c3bd9bffe))
+* **security:** add signed URL validation for image endpoint ([a6143f7](https://github.com/lgastler/shuto-api/commit/a6143f78a061a5e3aca0157e8eb4e2f137c3bf7d))
+
 # [1.2.0](https://github.com/lgastler/shuto-api/compare/v1.1.1...v1.2.0) (2025-01-09)
 
 
