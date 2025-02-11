@@ -49,16 +49,28 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 
 	options := utils.ParseImageOptionsFromRequest(r)
 
+	// If no format is specified, automatically select the best format based on browser support
+	if options.Format == "" {
+		accept := r.Header.Get("Accept")
+		if strings.Contains(accept, "image/webp") {
+			options.Format = "webp"
+		} else if strings.Contains(accept, "image/avif") {
+			options.Format = "avif"
+		} else {
+			options.Format = "jpg" // Default to JPEG as fallback
+		}
+	}
+
 	utils.Debug("Processing image request", 
 		"domain", domain,
 		"path", path,
 		"options", options,
 	)
 
-	// Check if path is a directory by listing its contents
+	// Check if path is a directory
 	files, err := rclone.ListPath(path, domain)
-	if err == nil && len(files) > 0 {
-		// If we got files back, this means the path is a directory
+	if err == nil && len(files) > 0 && files[0].IsDir {
+		// If the path points to a directory
 		utils.Error("Cannot serve directory as image", "path", path)
 		http.Error(w, "Cannot serve directory as image", http.StatusBadRequest)
 		return
