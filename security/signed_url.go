@@ -28,13 +28,14 @@ type SecretKey struct {
 
 // URLSigner handles the generation and validation of signed URLs
 type URLSigner struct {
-	keys          map[string]SecretKey
+	keys           map[string]SecretKey
 	validityWindow int // in seconds, 0 means indefinite
 	defaultKeyID   string
+	endpoint       string // the endpoint to use (image or download)
 }
 
 // NewURLSigner creates a new URLSigner instance
-func NewURLSigner(keys []SecretKey, validityWindow int, defaultKeyID string) (*URLSigner, error) {
+func NewURLSigner(keys []SecretKey, validityWindow int, defaultKeyID string, endpoint string) (*URLSigner, error) {
 	if len(keys) == 0 {
 		return nil, errors.New("at least one key is required")
 	}
@@ -54,10 +55,21 @@ func NewURLSigner(keys []SecretKey, validityWindow int, defaultKeyID string) (*U
 		return nil, errors.New("default key ID not found in provided keys")
 	}
 
+	// Default to image endpoint if none specified
+	if endpoint == "" {
+		endpoint = "image"
+	}
+
+	// Validate endpoint
+	if endpoint != "image" && endpoint != "download" {
+		return nil, errors.New("endpoint must be either 'image' or 'download'")
+	}
+
 	return &URLSigner{
-		keys:          keyMap,
+		keys:           keyMap,
 		validityWindow: validityWindow,
 		defaultKeyID:   defaultKeyID,
+		endpoint:       endpoint,
 	}, nil
 }
 
@@ -88,7 +100,7 @@ func (s *URLSigner) generateTimeboundURL(path string, params url.Values) (string
 	signedParams.Set("ts", fmt.Sprintf("%d", timestamp))
 	signedParams.Set("sig", signature)
 	
-	return fmt.Sprintf("/v1/image/%s?%s", path, signedParams.Encode()), nil
+	return fmt.Sprintf("/v1/%s/%s?%s", s.endpoint, path, signedParams.Encode()), nil
 }
 
 func (s *URLSigner) generateTimelessURL(path string, params url.Values) (string, error) {
@@ -108,7 +120,7 @@ func (s *URLSigner) generateTimelessURL(path string, params url.Values) (string,
 	signedParams.Set("kid", key.ID)
 	signedParams.Set("sig", signature)
 	
-	return fmt.Sprintf("/v1/image/%s?%s", path, signedParams.Encode()), nil
+	return fmt.Sprintf("/v1/%s/%s?%s", s.endpoint, path, signedParams.Encode()), nil
 }
 
 // ValidateSignedURL validates a signed URL
@@ -193,7 +205,7 @@ func ValidateSignedURLFromConfig(path string, query url.Values, secrets []config
 		}
 	}
 
-	signer, err := NewURLSigner(keys, validityWindow, "")
+	signer, err := NewURLSigner(keys, validityWindow, "", "") // endpoint not needed for validation
 	if err != nil {
 		return fmt.Errorf("failed to create URL signer: %w", err)
 	}

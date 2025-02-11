@@ -25,6 +25,7 @@ func TestNewURLSigner(t *testing.T) {
 		keys        []SecretKey
 		defaultKey  string
 		validity    int
+		endpoint    string
 		expectError bool
 	}{
 		{
@@ -32,6 +33,7 @@ func TestNewURLSigner(t *testing.T) {
 			keys:        createTestKeys(),
 			defaultKey:  "v1",
 			validity:    300,
+			endpoint:    "image",
 			expectError: false,
 		},
 		{
@@ -39,6 +41,7 @@ func TestNewURLSigner(t *testing.T) {
 			keys:        createTestKeys(),
 			defaultKey:  "",
 			validity:    300,
+			endpoint:    "image",
 			expectError: false,
 		},
 		{
@@ -46,6 +49,7 @@ func TestNewURLSigner(t *testing.T) {
 			keys:        []SecretKey{},
 			defaultKey:  "",
 			validity:    300,
+			endpoint:    "image",
 			expectError: true,
 		},
 		{
@@ -53,13 +57,22 @@ func TestNewURLSigner(t *testing.T) {
 			keys:        createTestKeys(),
 			defaultKey:  "v3",
 			validity:    300,
+			endpoint:    "image",
+			expectError: true,
+		},
+		{
+			name:        "invalid endpoint",
+			keys:        createTestKeys(),
+			defaultKey:  "v1",
+			validity:    300,
+			endpoint:    "invalid",
 			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signer, err := NewURLSigner(tt.keys, tt.validity, tt.defaultKey)
+			signer, err := NewURLSigner(tt.keys, tt.validity, tt.defaultKey, tt.endpoint)
 			if tt.expectError {
 				if err == nil {
 					t.Error("expected error, got nil")
@@ -78,7 +91,7 @@ func TestNewURLSigner(t *testing.T) {
 
 func TestURLSigner_GenerateAndValidateTimeboundURL(t *testing.T) {
 	keys := createTestKeys()
-	signer, err := NewURLSigner(keys, 300, "v1") // 5 minutes validity
+	signer, err := NewURLSigner(keys, 300, "v1", "image") // 5 minutes validity
 	if err != nil {
 		t.Fatalf("Failed to create signer: %v", err)
 	}
@@ -113,7 +126,7 @@ func TestURLSigner_GenerateAndValidateTimeboundURL(t *testing.T) {
 
 func TestURLSigner_KeyRotation(t *testing.T) {
 	// Create signer with v1 key
-	oldSigner, err := NewURLSigner([]SecretKey{{ID: "v1", Secret: []byte("old-secret")}}, 300, "v1")
+	oldSigner, err := NewURLSigner([]SecretKey{{ID: "v1", Secret: []byte("old-secret")}}, 300, "v1", "image")
 	if err != nil {
 		t.Fatalf("Failed to create old signer: %v", err)
 	}
@@ -131,7 +144,7 @@ func TestURLSigner_KeyRotation(t *testing.T) {
 		{ID: "v1", Secret: []byte("old-secret")},
 		{ID: "v2", Secret: []byte("new-secret")},
 	}
-	newSigner, err := NewURLSigner(newKeys, 300, "v2")
+	newSigner, err := NewURLSigner(newKeys, 300, "v2", "image")
 	if err != nil {
 		t.Fatalf("Failed to create new signer: %v", err)
 	}
@@ -156,7 +169,7 @@ func TestURLSigner_KeyRotation(t *testing.T) {
 }
 
 func TestURLSigner_ExpiredURL(t *testing.T) {
-	signer, err := NewURLSigner(createTestKeys(), 1, "v1") // 1 second validity
+	signer, err := NewURLSigner(createTestKeys(), 1, "v1", "image") // 1 second validity
 	if err != nil {
 		t.Fatalf("Failed to create signer: %v", err)
 	}
@@ -180,7 +193,7 @@ func TestURLSigner_ExpiredURL(t *testing.T) {
 }
 
 func TestURLSigner_InvalidKey(t *testing.T) {
-	signer, err := NewURLSigner(createTestKeys(), 300, "v1")
+	signer, err := NewURLSigner(createTestKeys(), 300, "v1", "image")
 	if err != nil {
 		t.Fatalf("Failed to create signer: %v", err)
 	}
@@ -198,8 +211,8 @@ func TestURLSigner_InvalidKey(t *testing.T) {
 
 func TestURLSigner_InvalidSignature(t *testing.T) {
 	// Create two signers with different secrets but same key ID
-	signer1, _ := NewURLSigner([]SecretKey{{ID: "v1", Secret: []byte("secret1")}}, 300, "v1")
-	signer2, _ := NewURLSigner([]SecretKey{{ID: "v1", Secret: []byte("secret2")}}, 300, "v1")
+	signer1, _ := NewURLSigner([]SecretKey{{ID: "v1", Secret: []byte("secret1")}}, 300, "v1", "image")
+	signer2, _ := NewURLSigner([]SecretKey{{ID: "v1", Secret: []byte("secret2")}}, 300, "v1", "image")
 
 	path := "test/image.jpg"
 	params := url.Values{}
@@ -219,7 +232,7 @@ func TestURLSigner_InvalidSignature(t *testing.T) {
 }
 
 func TestURLSigner_TimelessURL(t *testing.T) {
-	signer, err := NewURLSigner(createTestKeys(), 0, "v1") // 0 means timeless
+	signer, err := NewURLSigner(createTestKeys(), 0, "v1", "image") // 0 means timeless
 	if err != nil {
 		t.Fatalf("Failed to create signer: %v", err)
 	}
