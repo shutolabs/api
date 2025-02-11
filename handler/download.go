@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"shuto-api/config"
 	"shuto-api/security"
@@ -116,38 +117,74 @@ func handleFolderDownload(w http.ResponseWriter, r *http.Request, path string, f
 	options := utils.ParseImageOptionsFromRequest(r)
 	hasTransformParams := utils.HasImageTransformParams(r)
 
+	// Create a channel to receive processed files
+	type processedFile struct {
+		name    string
+		content []byte
+		err     error
+	}
+	results := make(chan processedFile)
+
+	// Create a worker pool to limit concurrent operations
+	const maxWorkers = 5
+	sem := make(chan struct{}, maxWorkers)
+	var activeWorkers int32
+
+	// Start workers for each file
 	for _, file := range files {
 		if file.IsDir {
 			continue
 		}
 
-		filePath := filepath.Join(path, file.Name)
-		content, err := rclone.FetchImage(filePath, domain)
-		if err != nil {
-			utils.Error("Failed to fetch file", "error", err, "file", filePath)
-			continue
-		}
+		go func(f utils.RcloneFile) {
+			// Acquire semaphore
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
-		// Process image if it's an image file and has transformation parameters
-		if hasTransformParams && utils.IsImageFile(filePath) {
-			content, err = imageUtils.TransformImage(content, options)
+			filePath := filepath.Join(path, f.Name)
+			content, err := rclone.FetchImage(filePath, domain)
 			if err != nil {
-				utils.Error("Failed to transform image", "error", err, "file", filePath)
-				continue
+				results <- processedFile{name: f.Name, err: err}
+				return
 			}
+
+			// Process image if needed
+			if hasTransformParams && utils.IsImageFile(filePath) {
+				content, err = imageUtils.TransformImage(content, options)
+				if err != nil {
+					results <- processedFile{name: f.Name, err: err}
+					return
+				}
+			}
+
+			results <- processedFile{name: f.Name, content: content}
+		}(file)
+
+		atomic.AddInt32(&activeWorkers, 1)
+	}
+
+	// Process results as they come in
+	var processedCount int32
+	for atomic.LoadInt32(&processedCount) < atomic.LoadInt32(&activeWorkers) {
+		result := <-results
+		atomic.AddInt32(&processedCount, 1)
+
+		if result.err != nil {
+			utils.Error("Failed to process file", "error", result.err, "file", result.name)
+			continue
 		}
 
-		f, err := zipWriter.Create(file.Name)
+		f, err := zipWriter.Create(result.name)
 		if err != nil {
-			utils.Error("Failed to create zip entry", "error", err, "file", file.Name)
+			utils.Error("Failed to create zip entry", "error", err, "file", result.name)
 			continue
 		}
 
-		if _, err := f.Write(content); err != nil {
-			utils.Error("Failed to write to zip", "error", err, "file", file.Name)
+		if _, err := f.Write(result.content); err != nil {
+			utils.Error("Failed to write to zip", "error", err, "file", result.name)
 			continue
 		}
 
-		utils.Debug("Added file to zip", "file", file.Name, "size", len(content))
+		utils.Debug("Added file to zip", "file", result.name, "size", len(result.content))
 	}
 }
