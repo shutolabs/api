@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"shuto-api/config"
 	"shuto-api/utils"
 )
 
@@ -28,7 +29,20 @@ func (m *MockImageUtils) GetImageMetadata(data []byte) (utils.ImageMetadata, err
 	return m.GetImageMetadataFunc(data)
 }
 
+// MockDomainConfigManager implements config.DomainConfigManager interface for testing
+type MockDomainConfigManager struct {
+	GetDomainConfigFunc func(domain string) (config.DomainConfig, error)
+}
+
+func (m *MockDomainConfigManager) GetDomainConfig(domain string) (config.DomainConfig, error) {
+	return m.GetDomainConfigFunc(domain)
+}
+
 func TestImageHandler(t *testing.T) {
+	defaultDomainConfig := func(domain string) (config.DomainConfig, error) {
+		return config.DomainConfig{}, nil
+	}
+
 	tests := []struct {
 		name           string
 		path           string
@@ -37,6 +51,7 @@ func TestImageHandler(t *testing.T) {
 		mockTransform  func([]byte, utils.ImageTransformOptions) ([]byte, error)
 		mockMimeType   func([]byte) (string, error)
 		mockGetImageMetadata func([]byte) (utils.ImageMetadata, error)
+		mockDomainConfig func(string) (config.DomainConfig, error)
 		expectedStatus int
 		expectedMime   string
 		expectedHeaders map[string]string
@@ -60,6 +75,7 @@ func TestImageHandler(t *testing.T) {
 			mockMimeType: func(data []byte) (string, error) {
 				return "image/jpeg", nil
 			},
+			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusOK,
 			expectedMime:   "image/jpeg",
 			expectedHeaders: map[string]string{
@@ -93,6 +109,7 @@ func TestImageHandler(t *testing.T) {
 			mockMimeType: func(data []byte) (string, error) {
 				return "image/webp", nil
 			},
+			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusOK,
 			expectedMime:   "image/webp",
 			expectedHeaders: map[string]string{
@@ -112,6 +129,7 @@ func TestImageHandler(t *testing.T) {
 			mockMimeType: func(data []byte) (string, error) {
 				return "", nil
 			},
+			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusInternalServerError,
 		},
 		{
@@ -123,6 +141,7 @@ func TestImageHandler(t *testing.T) {
 			mockTransform: func(data []byte, opts utils.ImageTransformOptions) ([]byte, error) {
 				return nil, fmt.Errorf("transform error")
 			},
+			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusInternalServerError,
 		},
 		{
@@ -137,6 +156,7 @@ func TestImageHandler(t *testing.T) {
 			mockMimeType: func(data []byte) (string, error) {
 				return "", fmt.Errorf("mime type error")
 			},
+			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusInternalServerError,
 		},
 		{
@@ -160,6 +180,7 @@ func TestImageHandler(t *testing.T) {
 			mockGetImageMetadata: func(data []byte) (utils.ImageMetadata, error) {
 				return utils.ImageMetadata{Width: 100, Height: 100}, nil
 			},
+			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusOK,
 			expectedMime:   "image/jpeg",
 			expectedHeaders: map[string]string{
@@ -184,6 +205,7 @@ func TestImageHandler(t *testing.T) {
 			mockMimeType: func(data []byte) (string, error) {
 				return "image/jpeg", nil
 			},
+			mockDomainConfig: defaultDomainConfig,
 			expectedStatus: http.StatusOK,
 			expectedMime:   "image/jpeg",
 			expectedHeaders: map[string]string{
@@ -204,6 +226,10 @@ func TestImageHandler(t *testing.T) {
 				GetImageMetadataFunc: tt.mockGetImageMetadata,
 			}
 
+			mockDomainConfig := &MockDomainConfigManager{
+				GetDomainConfigFunc: tt.mockDomainConfig,
+			}
+
 			req := httptest.NewRequest("GET", tt.path, nil)
 			q := req.URL.Query()
 			for k, v := range tt.queryParams {
@@ -212,7 +238,7 @@ func TestImageHandler(t *testing.T) {
 			req.URL.RawQuery = q.Encode()
 
 			rr := httptest.NewRecorder()
-			ImageHandler(rr, req, mockImageUtils, mockRclone)
+			ImageHandler(rr, req, mockImageUtils, mockRclone, mockDomainConfig)
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, rr.Code)
