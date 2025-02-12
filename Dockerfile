@@ -32,9 +32,6 @@ COPY --from=builder /app/main .
 # Copy rclone configuration
 COPY ./rclone.conf /root/.config/rclone/rclone.conf
 
-# Copy public folder
-COPY ./public ./public
-
 # Copy the domains.yaml file
 COPY ./config/domains.yaml ./config/domains.yaml
 
