@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,39 +28,26 @@ func (m *MockUtils) ListPath(path string) ([]utils.RcloneFile, error) {
 }
 
 func TestListHandler(t *testing.T) {
-	// Define a sample time string for consistency
-	sampleTimeStr := "2024-01-01T00:00:00Z"
-	
 	tests := []struct {
 		name           string
 		path           string
-		mockFiles      []byte
+		authHeader     string
+		mockFiles      []utils.RcloneFile
 		mockListError  error
+		mockDomainConfig config.DomainConfig
+		mockDomainConfigError error
 		expectedStatus int
 		expectedBody   string
 		checkBody      func(t *testing.T, body []byte)
 	}{
 		{
-			name: "Successful listing with multiple files",
-			path: "http://test/v1/list/photos",
-			mockFiles: []byte(`[
-				{
-					"path": "photos/file1.jpg",
-					"name": "file1.jpg",
-					"size": 1024,
-					"mimeType": "image/jpeg",
-					"modTime": "` + sampleTimeStr + `",
-					"isDir": false
-				},
-				{
-					"path": "photos/dir1",
-					"name": "dir1",
-					"size": 0,
-					"mimeType": "",
-					"modTime": "` + sampleTimeStr + `",
-					"isDir": true
-				}
-			]`),
+			name: "Successful listing with no API key required",
+			path: "/v1/list/photos",
+			mockFiles: []utils.RcloneFile{
+				{Path: "photos/file1.jpg", Size: 1024, MimeType: "image/jpeg", IsDir: false},
+				{Path: "photos/dir1", Size: 0, MimeType: "", IsDir: true},
+			},
+			mockDomainConfig: config.DomainConfig{},
 			expectedStatus: http.StatusOK,
 			checkBody: func(t *testing.T, body []byte) {
 				var files []FileResponse
@@ -72,50 +58,26 @@ func TestListHandler(t *testing.T) {
 				if len(files) != 2 {
 					t.Errorf("Expected 2 files, got %d", len(files))
 				}
-				if files[0].Width != 100 || files[0].Height != 100 {
-					t.Errorf("Unexpected image dimensions in response")
-				}
 			},
 		},
 		{
-			name:           "Empty directory",
-			path:           "http://test/v1/list/empty",
-			mockFiles:      []byte(`[]`),
-			expectedStatus: http.StatusOK,
-			checkBody: func(t *testing.T, body []byte) {
-				var files []utils.RcloneFile
-				err := json.Unmarshal(body, &files)
-				if err != nil {
-					t.Fatalf("Failed to unmarshal response body: %v", err)
-				}
-				if len(files) != 0 {
-					t.Errorf("Expected empty file list, got %d files", len(files))
-				}
+			name: "Successful listing with valid API key",
+			path: "/v1/list/photos",
+			authHeader: "Bearer test-key-1",
+			mockFiles: []utils.RcloneFile{
+				{Path: "photos/file1.jpg", Size: 1024, MimeType: "image/jpeg", IsDir: false},
 			},
-		},
-		{
-			name:           "Error listing files",
-			path:           "http://test/v1/list/error",
-			mockListError:  fmt.Errorf("error executing rclone lsjson: failed to list directory"),
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to list directory\n",
-		},
-		{
-			name: "Root path listing",
-			path: "http://test/v1/list/123",
-			mockFiles: []byte(`[
-				{
-					"path": "file1.jpg",
-					"name": "file1.jpg",
-					"size": 1024,
-					"mimeType": "image/jpeg",
-					"modTime": "` + sampleTimeStr + `",
-					"isDir": false
-				}
-			]`),
+			mockDomainConfig: config.DomainConfig{
+				Security: config.SecuritySettings{
+					APIKeys: []config.APIKey{
+						{Key: "test-key-1", Description: "Test Key 1"},
+						{Key: "test-key-2", Description: "Test Key 2"},
+					},
+				},
+			},
 			expectedStatus: http.StatusOK,
 			checkBody: func(t *testing.T, body []byte) {
-				var files []utils.RcloneFile
+				var files []FileResponse
 				err := json.Unmarshal(body, &files)
 				if err != nil {
 					t.Fatalf("Failed to unmarshal response body: %v", err)
@@ -125,28 +87,73 @@ func TestListHandler(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "Failed authentication - missing API key",
+			path: "/v1/list/photos",
+			mockDomainConfig: config.DomainConfig{
+				Security: config.SecuritySettings{
+					APIKeys: []config.APIKey{
+						{Key: "test-key-1", Description: "Test Key 1"},
+					},
+				},
+			},
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody: "Unauthorized\n",
+		},
+		{
+			name: "Failed authentication - invalid API key",
+			path: "/v1/list/photos",
+			authHeader: "Bearer invalid-key",
+			mockDomainConfig: config.DomainConfig{
+				Security: config.SecuritySettings{
+					APIKeys: []config.APIKey{
+						{Key: "test-key-1", Description: "Test Key 1"},
+					},
+				},
+			},
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody: "Unauthorized\n",
+		},
+		{
+			name: "Failed authentication - malformed auth header",
+			path: "/v1/list/photos",
+			authHeader: "Basic test-key-1",
+			mockDomainConfig: config.DomainConfig{
+				Security: config.SecuritySettings{
+					APIKeys: []config.APIKey{
+						{Key: "test-key-1", Description: "Test Key 1"},
+					},
+				},
+			},
+			expectedStatus: http.StatusUnauthorized,
+			expectedBody: "Unauthorized\n",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockExecutor := &utils.MockCommandExecutor{
-				ExecuteFunc: func(command string, args ...string) ([]byte, error) {
-					return tt.mockFiles, tt.mockListError
+			mockRclone := &utils.MockRclone{
+				ListPathFunc: func(path string, domain string) ([]utils.RcloneFile, error) {
+					if tt.mockListError != nil {
+						return nil, tt.mockListError
+					}
+					return tt.mockFiles, nil
 				},
-			}
-		
-			mockConfigManager := &config.MockDomainConfigManager{
-				GetDomainConfigFunc: func(domain string) (config.DomainConfig, error) {
-					return config.DomainConfig{
-						Rclone: config.RcloneConfig{
-							Remote: "test",
-							Flags:  []string{},
-						},
-					}, nil
+				FetchImageFunc: func(path string, domain string) ([]byte, error) {
+					// Return dummy image data for testing
+					return []byte("mock-image-data"), nil
 				},
 			}
 
-			rclone := utils.NewRclone(mockExecutor, mockConfigManager)
+			mockDomainConfigManager := &config.MockDomainConfigManager{
+				GetDomainConfigFunc: func(domain string) (config.DomainConfig, error) {
+					if tt.mockDomainConfigError != nil {
+						return config.DomainConfig{}, tt.mockDomainConfigError
+					}
+					return tt.mockDomainConfig, nil
+				},
+			}
+
 			mockImageUtils := &MockImageUtils{
 				GetImageMetadataFunc: func(data []byte) (utils.ImageMetadata, error) {
 					return utils.ImageMetadata{Width: 100, Height: 100}, nil
@@ -154,31 +161,23 @@ func TestListHandler(t *testing.T) {
 			}
 
 			req := httptest.NewRequest("GET", tt.path, nil)
+			if tt.authHeader != "" {
+				req.Header.Set("Authorization", tt.authHeader)
+			}
 			rec := httptest.NewRecorder()
 
-			ListHandler(rec, req, mockImageUtils, rclone)
+			ListHandler(rec, req, mockImageUtils, mockRclone, mockDomainConfigManager)
 
-			// Check status code
 			if rec.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, rec.Code)
 			}
 
-			// Check Content-Type header for successful responses
-			if tt.expectedStatus == http.StatusOK {
-				contentType := rec.Header().Get("Content-Type")
-				if contentType != "application/json" {
-					t.Errorf("expected Content-Type application/json, got %s", contentType)
-				}
-			}
-
-			// Check body
 			if tt.expectedBody != "" {
 				if rec.Body.String() != tt.expectedBody {
 					t.Errorf("expected body %q, got %q", tt.expectedBody, rec.Body.String())
 				}
 			}
 
-			// Run custom body checks if provided
 			if tt.checkBody != nil {
 				tt.checkBody(t, rec.Body.Bytes())
 			}

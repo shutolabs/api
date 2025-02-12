@@ -8,6 +8,10 @@ domains:
     rclone:
       remote: test
       flags: []
+    security:
+      api_keys:
+        - key: "${TEST_API_KEY}"
+          description: "Test API Key"
 
   shuto.test:
     rclone:
@@ -23,6 +27,11 @@ domains:
         - key_id: "v1"
           secret: "${HMAC_SECRET_KEY}"
       validity_window: 300 # 5 minutes
+      api_keys:
+        - key: "${SHUTO_TEST_API_KEY_1}"
+          description: "Shuto Test API Key 1"
+        - key: "${SHUTO_TEST_API_KEY_2}"
+          description: "Shuto Test API Key 2"
 
   api.shuto.lg-apps.tech:
     rclone:
@@ -32,6 +41,10 @@ domains:
         - --webdav-vendor=${RCLONE_CONFIG_SERVER_VENDOR}
         - --webdav-user=${RCLONE_CONFIG_SERVER_USER}
         - --webdav-pass=${RCLONE_CONFIG_SERVER_PASS}
+    security:
+      api_keys:
+        - key: "${PROD_API_KEY_1}"
+          description: "Production API Key 1"
 
   api-aws.shuto.lg-apps.tech:
     rclone:
@@ -41,3 +54,7 @@ domains:
         - --webdav-vendor=${RCLONE_CONFIG_SERVER_VENDOR}
         - --webdav-user=${RCLONE_CONFIG_SERVER_USER}
         - --webdav-pass=${RCLONE_CONFIG_SERVER_PASS}
+    security:
+      api_keys:
+        - key: "${AWS_API_KEY_1}"
+          description: "AWS API Key 1"

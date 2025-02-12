@@ -37,12 +37,26 @@ func init() {
 	}
 }
 
-// ListHandler processes listing of files based on the provided path
-func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone) {
+func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone, domainConfig config.DomainConfigManager) {
 	domain := utils.GetDomainFromRequest(r)
 	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/list/")
 	
 	utils.Debug("Processing list request", "domain", domain, "path", path)
+
+	// Get domain configuration
+	cfg, err := domainConfig.GetDomainConfig(domain)
+	if err != nil {
+		utils.Error("Failed to get domain config", "error", err, "domain", domain)
+		http.Error(w, "Invalid domain", http.StatusBadRequest)
+		return
+	}
+
+	// Validate API key if configured
+	if !validateAPIKey(cfg.Security.APIKeys, r.Header.Get("Authorization")) {
+		utils.Warn("Invalid or missing API key", "domain", domain)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	files, err := rclone.ListPath(path, domain)
 	if err != nil {
@@ -103,3 +117,27 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
 }
+
+func validateAPIKey(apiKeys []config.APIKey, authHeader string) bool {
+	if len(apiKeys) == 0 {
+		return true // No API keys configured means no authentication required
+	}
+
+	if authHeader == "" {
+		return false
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return false
+	}
+
+	providedKey := parts[1]
+	for _, apiKey := range apiKeys {
+		if apiKey.Key == providedKey {
+			return true
+		}
+	}
+	return false
+}
+

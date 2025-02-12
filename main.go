@@ -54,7 +54,7 @@ func main() {
 		handler.ImageHandler(w, r, imageUtils, rclone, configManager)
 	})
 	http.HandleFunc("/"+config.ApiVersion+"/list/", func(w http.ResponseWriter, r *http.Request) {
-		handler.ListHandler(w, r, imageUtils, rclone)
+		handler.ListHandler(w, r, imageUtils, rclone, configManager)
 	})
 	http.HandleFunc("/"+config.ApiVersion+"/download/", func(w http.ResponseWriter, r *http.Request) {
 		handler.DownloadHandler(w, r, imageUtils, rclone, configManager)

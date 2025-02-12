@@ -19,10 +19,16 @@ const (
 	HMACTimeless  SecurityMode = "hmac_timeless"
 )
 
+type APIKey struct {
+	Key         string `yaml:"key"`
+	Description string `yaml:"description,omitempty"`
+}
+
 type SecuritySettings struct {
 	Mode           SecurityMode  `yaml:"mode"`
 	Secrets        []SecretKey   `yaml:"secrets"`
 	ValidityWindow int          `yaml:"validity_window"` // in seconds
+	APIKeys        []APIKey     `yaml:"api_keys,omitempty"`
 }
 
 type SecretKey struct {
