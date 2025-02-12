@@ -73,9 +73,13 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 		return
 	}
 
-	imgData, err := rclone.FetchImage(path, domain)
+	data, err := rclone.FetchImage(path, domain)
 	if err != nil {
-		utils.WriteNotFoundError(w, "Failed to fetch image", err.Error())
+		if strings.Contains(err.Error(), "directory not found") || strings.Contains(err.Error(), "file not found") {
+			utils.WriteNotFoundError(w, "Image not found", path)
+			return
+		}
+		utils.WriteInternalError(w, "Failed to fetch image", err.Error())
 		return
 	}
 
@@ -93,7 +97,7 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 		}
 	}
 
-	modifiedImg, err := imgUtils.TransformImage(imgData, options)
+	modifiedImg, err := imgUtils.TransformImage(data, options)
 	if err != nil {
 		utils.WriteInternalError(w, "Failed to transform image", err.Error())
 		return

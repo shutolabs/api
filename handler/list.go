@@ -69,9 +69,10 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 		return
 	}
 
-	// Validate API key if configured
 	if !validateAPIKey(cfg.Security.APIKeys, r.Header.Get("Authorization")) {
-		utils.WriteInvalidAPIKeyError(w)
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Unauthorized\n"))
 		return
 	}
 
