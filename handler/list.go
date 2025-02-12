@@ -46,36 +46,43 @@ func init() {
 // @Security ApiKeyAuth
 // @Param   path     path    string     true        "Path to list contents from"
 // @Success 200 {array}  utils.RcloneFile "List of files and directories"
-// @Failure 400 {string} string "Invalid parameters"
-// @Failure 401 {string} string "Unauthorized - Invalid or missing API key"
-// @Failure 404 {string} string "Path not found"
-// @Failure 500 {string} string "Internal server error"
+// @Failure 400 {object} utils.ErrorResponse "Invalid request parameters"
+// @Failure 401 {object} utils.ErrorResponse "Unauthorized - Invalid or missing API key"
+// @Failure 404 {object} utils.ErrorResponse "Path not found"
+// @Failure 500 {object} utils.ErrorResponse "Internal server error"
 // @Router /list/{path} [get]
 func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone, domainConfig config.DomainConfigManager) {
 	domain := utils.GetDomainFromRequest(r)
 	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/list/")
 	
+	if path == "" {
+		utils.WriteInvalidPathError(w, "Path is required")
+		return
+	}
+
 	utils.Debug("Processing list request", "domain", domain, "path", path)
 
 	// Get domain configuration
 	cfg, err := domainConfig.GetDomainConfig(domain)
 	if err != nil {
-		utils.Error("Failed to get domain config", "error", err, "domain", domain)
-		http.Error(w, "Invalid domain", http.StatusBadRequest)
+		utils.WriteInvalidDomainError(w, domain)
 		return
 	}
 
 	// Validate API key if configured
 	if !validateAPIKey(cfg.Security.APIKeys, r.Header.Get("Authorization")) {
-		utils.Warn("Invalid or missing API key", "domain", domain)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.WriteInvalidAPIKeyError(w)
 		return
 	}
 
 	files, err := rclone.ListPath(path, domain)
 	if err != nil {
-		utils.Error("Failed to list directory", "error", err, "path", path)
-		http.Error(w, "Failed to list directory", http.StatusInternalServerError)
+		utils.WriteInternalError(w, "Failed to list directory", err.Error())
+		return
+	}
+
+	if len(files) == 0 {
+		utils.WriteNotFoundError(w, "Directory is empty or does not exist", path)
 		return
 	}
 
@@ -121,8 +128,7 @@ func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUti
 
 	data, err := json.Marshal(response)
 	if err != nil {
-		utils.Error("Failed to encode response", "error", err)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		utils.WriteInternalError(w, "Failed to encode response", err.Error())
 		return
 	}
 

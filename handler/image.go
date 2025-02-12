@@ -25,46 +25,58 @@ import (
 // @Param   blur     query   int        false       "Gaussian blur intensity (0-100)"
 // @Param   dl       query   bool       false       "Force download instead of display"
 // @Success 200 {file}  []byte
-// @Failure 400 {string} string "Invalid parameters"
-// @Failure 404 {string} string "Image not found"
-// @Failure 500 {string} string "Internal server error"
+// @Failure 400 {object} utils.ErrorResponse "Invalid request parameters"
+// @Failure 401 {object} utils.ErrorResponse "Unauthorized - Invalid signature"
+// @Failure 403 {object} utils.ErrorResponse "Forbidden - Invalid signature"
+// @Failure 404 {object} utils.ErrorResponse "Image not found"
+// @Failure 410 {object} utils.ErrorResponse "Gone - Token expired"
+// @Failure 500 {object} utils.ErrorResponse "Internal server error"
 // @Router /image/{path} [get]
 func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone, domainConfig config.DomainConfigManager) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.WriteInvalidRequestError(w, "Method not allowed", r.Method)
 		return
 	}
 
 	domain := utils.GetDomainFromRequest(r)
 	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/image/")
 	if path == "" {
-		http.Error(w, "Path is required", http.StatusBadRequest)
+		utils.WriteInvalidPathError(w, "Path is required")
 		return
 	}
 	
 	cfg, err := domainConfig.GetDomainConfig(domain)
 	if err != nil {
-		utils.Error("Failed to get domain config", "error", err, "domain", domain)
-		http.Error(w, "Invalid domain", http.StatusBadRequest)
+		utils.WriteInvalidDomainError(w, domain)
 		return
 	}
 
 	// Validate signed URL if security is enabled
 	if cfg.Security.Mode != "" {
 		if err := security.ValidateSignedURLFromConfig(path, r.URL.Query(), cfg.Security.Secrets, cfg.Security.ValidityWindow); err != nil {
-			utils.Error("Invalid signed URL", "error", err, "path", path)
-			var status int
 			switch err {
 			case security.ErrKeyNotFound:
-				status = http.StatusUnauthorized
+				utils.WriteUnauthorizedError(w, "Invalid security key")
 			case security.ErrExpiredURL:
-				status = http.StatusGone
+				utils.WriteExpiredTokenError(w)
 			default:
-				status = http.StatusForbidden
+				utils.WriteInvalidSignatureError(w)
 			}
-			http.Error(w, err.Error(), status)
 			return
 		}
+	}
+
+	// Check if path is a directory
+	files, err := rclone.ListPath(path, domain)
+	if err == nil && len(files) > 0 && files[0].IsDir {
+		utils.WriteInvalidRequestError(w, "Cannot serve directory as image", path)
+		return
+	}
+
+	imgData, err := rclone.FetchImage(path, domain)
+	if err != nil {
+		utils.WriteNotFoundError(w, "Failed to fetch image", err.Error())
+		return
 	}
 
 	options := utils.ParseImageOptionsFromRequest(r)
@@ -81,47 +93,17 @@ func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUt
 		}
 	}
 
-	utils.Debug("Processing image request", 
-		"domain", domain,
-		"path", path,
-		"options", options,
-	)
-
-	// Check if path is a directory
-	files, err := rclone.ListPath(path, domain)
-	if err == nil && len(files) > 0 && files[0].IsDir {
-		// If the path points to a directory
-		utils.Error("Cannot serve directory as image", "path", path)
-		http.Error(w, "Cannot serve directory as image", http.StatusBadRequest)
-		return
-	}
-
-	imgData, err := rclone.FetchImage(path, domain)
-	if err != nil {
-		utils.Error("Failed to fetch image", "error", err, "path", path)
-		http.Error(w, "Failed to fetch image", http.StatusInternalServerError)
-		return
-	}
-
 	modifiedImg, err := imgUtils.TransformImage(imgData, options)
 	if err != nil {
-		utils.Error("Failed to transform image", "error", err, "options", options)
-		http.Error(w, "Failed to transform image", http.StatusInternalServerError)
+		utils.WriteInternalError(w, "Failed to transform image", err.Error())
 		return
 	}
 
 	mimeType, err := imgUtils.GetMimeType(modifiedImg)
 	if err != nil {
-		utils.Error("Failed to get MIME type", "error", err)
-		http.Error(w, "Failed to process image", http.StatusInternalServerError)
+		utils.WriteInternalError(w, "Failed to get MIME type", err.Error())
 		return
 	}
-
-	utils.Debug("Image processed successfully",
-		"path", path,
-		"mimeType", mimeType,
-		"size", len(modifiedImg),
-	)
 
 	if options.ForceDownload {
 		w.Header().Set("Content-Disposition", "attachment")
