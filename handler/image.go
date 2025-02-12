@@ -9,6 +9,26 @@ import (
 	"shuto-api/utils"
 )
 
+// ImageHandler processes image transformation requests
+// @Summary Process and transform an image
+// @Description Get an image with optional transformations applied
+// @Tags image
+// @Accept  json
+// @Produce  image/jpeg,image/png,image/webp
+// @Param   path     path    string     true        "Path to the image file"
+// @Param   w        query   int        false       "Output image width in pixels"
+// @Param   h        query   int        false       "Output image height in pixels"
+// @Param   fit      query   string     false       "Resize mode: clip, crop, fill" Enums(clip,crop,fill)
+// @Param   fm       query   string     false       "Output format: jpg, jpeg, png, webp" Enums(jpg,jpeg,png,webp)
+// @Param   q        query   int        false       "Compression quality (1-100)"
+// @Param   dpr      query   number     false       "Device pixel ratio (1-3)"
+// @Param   blur     query   int        false       "Gaussian blur intensity (0-100)"
+// @Param   dl       query   bool       false       "Force download instead of display"
+// @Success 200 {file}  []byte
+// @Failure 400 {string} string "Invalid parameters"
+// @Failure 404 {string} string "Image not found"
+// @Failure 500 {string} string "Internal server error"
+// @Router /image/{path} [get]
 func ImageHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone, domainConfig config.DomainConfigManager) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

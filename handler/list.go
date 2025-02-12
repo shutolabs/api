@@ -37,6 +37,20 @@ func init() {
 	}
 }
 
+// ListHandler handles directory listing requests
+// @Summary List contents of a directory
+// @Description Get a list of files and directories at the specified path
+// @Tags list
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param   path     path    string     true        "Path to list contents from"
+// @Success 200 {array}  utils.RcloneFile "List of files and directories"
+// @Failure 400 {string} string "Invalid parameters"
+// @Failure 401 {string} string "Unauthorized - Invalid or missing API key"
+// @Failure 404 {string} string "Path not found"
+// @Failure 500 {string} string "Internal server error"
+// @Router /list/{path} [get]
 func ListHandler(w http.ResponseWriter, r *http.Request, imgUtils utils.ImageUtils, rclone utils.Rclone, domainConfig config.DomainConfigManager) {
 	domain := utils.GetDomainFromRequest(r)
 	path := strings.TrimPrefix(r.URL.Path, "/"+config.ApiVersion+"/list/")

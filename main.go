@@ -9,10 +9,20 @@ import (
 	"shuto-api/handler"
 	"shuto-api/utils"
 
+	_ "shuto-api/docs"
+
 	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/joho/godotenv"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+// @title						shuto API
+// @description			API for processing and transforming images
+// @BasePath				/v1
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and API key.
 func main() {
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
@@ -60,8 +70,10 @@ func main() {
 		handler.DownloadHandler(w, r, imageUtils, rclone, configManager)
 	})
 
-	fs := http.FileServer(http.Dir("./public/swaggerui"))
-	http.Handle("/swaggerui/", http.StripPrefix("/swaggerui/", fs))
+	// Serve Swagger UI
+	http.HandleFunc("/docs/", httpSwagger.Handler(
+		httpSwagger.URL("/docs/doc.json"),
+	))
 
 	port := os.Getenv("PORT")
 	if port == "" {

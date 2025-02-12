@@ -1,0 +1,179 @@
+basePath: /v1
+definitions:
+  utils.RcloneFile:
+    properties:
+      IsDir:
+        type: boolean
+      MimeType:
+        type: string
+      ModTime:
+        type: string
+      Name:
+        type: string
+      Path:
+        type: string
+      Size:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: API for processing and transforming images
+  title: Shuto API
+paths:
+  /download/{path}:
+    get:
+      consumes:
+      - application/json
+      description: Download a file from the specified path
+      parameters:
+      - description: Path to the file to download
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Invalid parameters
+          schema:
+            type: string
+        "404":
+          description: File not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Download a file
+      tags:
+      - download
+  /image/{path}:
+    get:
+      consumes:
+      - application/json
+      description: Get an image with optional transformations applied
+      parameters:
+      - description: Path to the image file
+        in: path
+        name: path
+        required: true
+        type: string
+      - description: Output image width in pixels
+        in: query
+        name: w
+        type: integer
+      - description: Output image height in pixels
+        in: query
+        name: h
+        type: integer
+      - description: 'Resize mode: clip, crop, fill'
+        enum:
+        - clip
+        - crop
+        - fill
+        in: query
+        name: fit
+        type: string
+      - description: 'Output format: jpg, jpeg, png, webp'
+        enum:
+        - jpg
+        - jpeg
+        - png
+        - webp
+        in: query
+        name: fm
+        type: string
+      - description: Compression quality (1-100)
+        in: query
+        name: q
+        type: integer
+      - description: Device pixel ratio (1-3)
+        in: query
+        name: dpr
+        type: number
+      - description: Gaussian blur intensity (0-100)
+        in: query
+        name: blur
+        type: integer
+      - description: Force download instead of display
+        in: query
+        name: dl
+        type: boolean
+      produces:
+      - image/jpeg
+      - image/png
+      - image/webp
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Invalid parameters
+          schema:
+            type: string
+        "404":
+          description: Image not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Process and transform an image
+      tags:
+      - image
+  /list/{path}:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of files and directories at the specified path
+      parameters:
+      - description: Path to list contents from
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of files and directories
+          schema:
+            items:
+              $ref: '#/definitions/utils.RcloneFile'
+            type: array
+        "400":
+          description: Invalid parameters
+          schema:
+            type: string
+        "401":
+          description: Unauthorized - Invalid or missing API key
+          schema:
+            type: string
+        "404":
+          description: Path not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: List contents of a directory
+      tags:
+      - list
+securityDefinitions:
+  ApiKeyAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

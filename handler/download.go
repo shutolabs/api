@@ -12,6 +12,18 @@ import (
 	"shuto-api/utils"
 )
 
+// DownloadHandler handles file download requests
+// @Summary Download a file
+// @Description Download a file from the specified path
+// @Tags download
+// @Accept  json
+// @Produce  octet-stream
+// @Param   path     path    string     true        "Path to the file to download"
+// @Success 200 {file}  []byte
+// @Failure 400 {string} string "Invalid parameters"
+// @Failure 404 {string} string "File not found"
+// @Failure 500 {string} string "Internal server error"
+// @Router /download/{path} [get]
 func DownloadHandler(w http.ResponseWriter, r *http.Request, imageUtils utils.ImageUtils, rclone utils.Rclone, domainConfig config.DomainConfigManager) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
