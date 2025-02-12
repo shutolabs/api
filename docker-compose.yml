@@ -2,12 +2,12 @@ version: "3.8"
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/lgastler/shuto-api:latest
     env_file: .env
     ports:
       - "8080:8080"
     volumes:
-      - ${HOST_IMAGE_VOLUME_PATH}:/app/images
+      - ./domains.yaml:/app/config/domains.yaml:ro
+      - ./rclone.conf:/root/.config/rclone/rclone.conf:ro
+      - ./images:/app/images
     command: ["./main"]

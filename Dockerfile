@@ -29,14 +29,43 @@ WORKDIR /app
 # Copy the binary from builder
 COPY --from=builder /app/main .
 
-# Copy rclone configuration
-COPY ./rclone.conf /root/.config/rclone/rclone.conf
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/config && \
+    mkdir -p /root/.config/rclone && \
+    chmod 755 /root/.config && \
+    chmod 755 /root/.config/rclone
 
-# Copy the domains.yaml file
-COPY ./config/domains.yaml ./config/domains.yaml
+# Create a script to check for required configuration files
+COPY <<'EOF' /app/docker-entrypoint.sh
+#!/bin/sh
+set -e
+
+# Check for required configuration files
+if [ ! -f "/root/.config/rclone/rclone.conf" ]; then
+    echo "Error: rclone.conf not found. Please mount it to /root/.config/rclone/rclone.conf"
+    echo "Example: -v $(pwd)/rclone.conf:/root/.config/rclone/rclone.conf:ro"
+    ls -la /root/.config/rclone  # Debug: List contents of rclone config directory
+    exit 1
+fi
+
+if [ ! -f "/app/config/domains.yaml" ]; then
+    echo "Error: domains.yaml not found. Please mount it to /app/config/domains.yaml"
+    echo "Example: -v $(pwd)/config/domains.yaml:/app/config/domains.yaml:ro"
+    exit 1
+fi
+
+# Start the application
+exec "$@"
+EOF
+
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Create volume mount points
+VOLUME ["/app/config", "/app/images", "/root/.config/rclone"]
 
 # Expose the port the app runs on
 EXPOSE 8080
 
-# Command to run the application
+# Set the entrypoint
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["./main"]

@@ -2,7 +2,88 @@
 
 This repository contains the API service for reducing / enhancing and modifying images.
 
-## Setup
+## Running the Service
+
+The following instructions are for users who want to run the service using Docker. For development setup, see the [Development](#development) section.
+
+### Configuration
+
+The API requires two main configuration files:
+
+#### 1. Domain Configuration (domains.yaml)
+
+Basic example of `domains.yaml`:
+
+```yaml
+domains:
+  localhost:
+    rclone:
+      remote: local
+      flags: []
+
+  example.com:
+    rclone:
+      remote: webdav
+      # Flags can be used to configure the remote instead of rclone.conf
+      flags:
+        - --webdav-url=${WEBDAV_URL}
+        - --webdav-vendor=${WEBDAV_VENDOR}
+        - --webdav-user=${WEBDAV_USER}
+        - --webdav-pass=${WEBDAV_PASS}
+    security:
+      mode: hmac_timebound
+      secrets:
+        - key_id: "v1"
+          secret: "${HMAC_SECRET_KEY}"
+      validity_window: 300
+```
+
+#### 2. Rclone Configuration (rclone.conf)
+
+Basic example of `rclone.conf`:
+
+```ini
+[local]
+type = local
+
+[webdav]
+type = webdav
+# Configuration can be done here instead of using flags in domains.yaml
+url = https://your-webdav-server.com
+vendor = nextcloud
+user = your-username
+pass = your-password
+```
+
+More detailed documentation about configuration options will be available soon.
+
+### Docker Deployment
+
+The Docker container requires configuration files to be mounted as volumes. Make sure you have the following files ready:
+
+- `domains.yaml`: Domain configuration file
+- `rclone.conf`: Rclone configuration file
+- `.env`: Environment variables file (optional)
+
+1. Using Docker directly:
+
+   ```bash
+   docker run -d \
+     -p 8080:8080 \
+     -v ./domains.yaml:/app/config/domains.yaml:ro \
+     -v ./rclone.conf:/root/.config/rclone/rclone.conf:ro \
+     -v ./images:/app/images \
+     --env-file .env \
+     ghcr.io/lgastler/shuto-api:latest
+   ```
+
+2. Using Docker Compose:
+
+   See [docker-compose.yml](docker-compose.yml) for an example deployment configuration.
+
+Note: The container will fail to start if either `domains.yaml` or `rclone.conf` is not mounted. This is a safety measure to ensure proper configuration.
+
+## Development
 
 ### Prerequisites
 
@@ -12,68 +93,7 @@ This repository contains the API service for reducing / enhancing and modifying 
   - Ubuntu: `apt-get install libvips-dev`
 - rclone (for remote storage operations)
 
-### Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/yourusername/shuto-api.git
-   cd shuto-api
-   ```
-
-2. Install Go dependencies:
-
-   ```bash
-   go mod download
-   ```
-
-3. Copy the environment file and configure your settings:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   Edit `.env` with your configuration values.
-
-4. Configure your domains in `config/domains.yaml`. Example configuration:
-   ```yaml
-   domains:
-     localhost:
-       rclone:
-         remote: test
-         flags: []
-     your-domain:
-       rclone:
-         remote: webdav
-         flags:
-           - --webdav-url=${RCLONE_CONFIG_SERVER_URL}
-           - --webdav-vendor=${RCLONE_CONFIG_SERVER_VENDOR}
-           - --webdav-user=${RCLONE_CONFIG_SERVER_USER}
-           - --webdav-pass=${RCLONE_CONFIG_SERVER_PASS}
-       security:
-         mode: hmac_timebound
-         secrets:
-           - key_id: "v1"
-             secret: "${HMAC_SECRET_KEY}"
-         validity_window: 300
-   ```
-
-### Running the Service
-
-1. Start the server:
-
-   ```bash
-   go run main.go
-   ```
-
-   The server will start on the configured port (default: 8080)
-
-2. Test the service:
-   ```bash
-   curl http://localhost:8080/v2/list/
-   ```
-
-### Development
+### Development Tasks
 
 - Run tests:
 

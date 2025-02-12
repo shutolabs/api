@@ -1,3 +1,3 @@
 package config
 
-const ApiVersion = "v1"
+const ApiVersion = "v2"
