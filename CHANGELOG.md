@@ -1,3 +1,47 @@
+# [2.0.0](https://github.com/lgastler/shuto-api/compare/v1.3.0...v2.0.0) (2025-02-12)
+
+
+* feat(errors)!: standardize error responses across all endpoints ([924b620](https://github.com/lgastler/shuto-api/commit/924b6208f810d90718100c45cc265c6ed2c31aae))
+
+
+### Bug Fixes
+
+* **image,list:** improve error handling and API key validation ([2519598](https://github.com/lgastler/shuto-api/commit/25195983e712899ed3bbf5258a0296da33d9b7df))
+
+
+### Features
+
+* **docs:** update Swagger documentation for API endpoints ([2034b68](https://github.com/lgastler/shuto-api/commit/2034b68c2ff5bce1149e83f327990246d19a83d5))
+* **security:** add API key authentication for list endpoint ([95afc36](https://github.com/lgastler/shuto-api/commit/95afc36bf68cafa130419f2e26bc6aca93abff90))
+
+
+### BREAKING CHANGES
+
+* Error responses now return a structured JSON object instead of plain text.
+The new format includes an error message, error code, and optional details (in development only).
+
+Old format:
+"Invalid domain"
+
+New format:
+{
+  "error": "Invalid domain",
+  "code": "INVALID_DOMAIN",
+  "details": "..." //
+}
+
+Error codes have been standardized across all endpoints:
+- INVALID_REQUEST
+- UNAUTHORIZED
+- FORBIDDEN
+- NOT_FOUND
+- INTERNAL_ERROR
+- INVALID_DOMAIN
+- INVALID_PATH
+- INVALID_API_KEY
+- EXPIRED_TOKEN
+- INVALID_SIGNATURE
+
 # [1.3.0](https://github.com/lgastler/shuto-api/compare/v1.2.0...v1.3.0) (2025-02-11)
 
 
