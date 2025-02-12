@@ -18,7 +18,7 @@ import (
 
 // @title						shuto API
 // @description			API for processing and transforming images
-// @BasePath				/v1
+// @BasePath				/v2
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization

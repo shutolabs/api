@@ -100,7 +100,7 @@ func (s *URLSigner) generateTimeboundURL(path string, params url.Values) (string
 	signedParams.Set("ts", fmt.Sprintf("%d", timestamp))
 	signedParams.Set("sig", signature)
 	
-	return fmt.Sprintf("/v1/%s/%s?%s", s.endpoint, path, signedParams.Encode()), nil
+	return fmt.Sprintf("/v2/%s/%s?%s", s.endpoint, path, signedParams.Encode()), nil
 }
 
 func (s *URLSigner) generateTimelessURL(path string, params url.Values) (string, error) {
@@ -120,7 +120,7 @@ func (s *URLSigner) generateTimelessURL(path string, params url.Values) (string,
 	signedParams.Set("kid", key.ID)
 	signedParams.Set("sig", signature)
 	
-	return fmt.Sprintf("/v1/%s/%s?%s", s.endpoint, path, signedParams.Encode()), nil
+	return fmt.Sprintf("/v2/%s/%s?%s", s.endpoint, path, signedParams.Encode()), nil
 }
 
 // ValidateSignedURL validates a signed URL

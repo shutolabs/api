@@ -42,7 +42,7 @@ func TestListHandler(t *testing.T) {
 	}{
 		{
 			name: "Successful listing with no API key required",
-			path: "/v1/list/photos",
+			path: "/v2/list/photos",
 			mockFiles: []utils.RcloneFile{
 				{Path: "photos/file1.jpg", Size: 1024, MimeType: "image/jpeg", IsDir: false},
 				{Path: "photos/dir1", Size: 0, MimeType: "", IsDir: true},
@@ -62,7 +62,7 @@ func TestListHandler(t *testing.T) {
 		},
 		{
 			name: "Successful listing with valid API key",
-			path: "/v1/list/photos",
+			path: "/v2/list/photos",
 			authHeader: "Bearer test-key-1",
 			mockFiles: []utils.RcloneFile{
 				{Path: "photos/file1.jpg", Size: 1024, MimeType: "image/jpeg", IsDir: false},
@@ -89,7 +89,7 @@ func TestListHandler(t *testing.T) {
 		},
 		{
 			name: "Failed authentication - missing API key",
-			path: "/v1/list/photos",
+			path: "/v2/list/photos",
 			mockDomainConfig: config.DomainConfig{
 				Security: config.SecuritySettings{
 					APIKeys: []config.APIKey{
@@ -102,7 +102,7 @@ func TestListHandler(t *testing.T) {
 		},
 		{
 			name: "Failed authentication - invalid API key",
-			path: "/v1/list/photos",
+			path: "/v2/list/photos",
 			authHeader: "Bearer invalid-key",
 			mockDomainConfig: config.DomainConfig{
 				Security: config.SecuritySettings{
@@ -116,7 +116,7 @@ func TestListHandler(t *testing.T) {
 		},
 		{
 			name: "Failed authentication - malformed auth header",
-			path: "/v1/list/photos",
+			path: "/v2/list/photos",
 			authHeader: "Basic test-key-1",
 			mockDomainConfig: config.DomainConfig{
 				Security: config.SecuritySettings{

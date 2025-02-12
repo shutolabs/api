@@ -5,7 +5,7 @@
         "title": "shuto API",
         "contact": {}
     },
-    "basePath": "/v1",
+    "basePath": "/v2",
     "paths": {
         "/download/{path}": {
             "get": {

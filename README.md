@@ -70,7 +70,7 @@ This repository contains the API service for reducing / enhancing and modifying 
 
 2. Test the service:
    ```bash
-   curl http://localhost:8080/v1/list/
+   curl http://localhost:8080/v2/list/
    ```
 
 ### Development
@@ -88,7 +88,7 @@ This repository contains the API service for reducing / enhancing and modifying 
 
 ## Features
 
-### Image Transformation (`/v1/image/`)
+### Image Transformation (`/v2/image/`)
 
 - Resize images with width and height parameters
 - Multiple fit options for resizing (e.g., crop)
@@ -100,7 +100,7 @@ This repository contains the API service for reducing / enhancing and modifying 
 - Automatic format selection based on browser support
 - Caching support with long-term cache headers
 
-### Directory Listing (`/v1/list/`)
+### Directory Listing (`/v2/list/`)
 
 - List files and directories
 - Returns detailed file information including:
@@ -112,7 +112,7 @@ This repository contains the API service for reducing / enhancing and modifying 
   - Image keywords/metadata (if available)
 - Metadata caching for improved performance
 
-### File Download (`/v1/download/`)
+### File Download (`/v2/download/`)
 
 - Single file downloads
 - Bulk directory downloads (as ZIP)

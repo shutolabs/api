@@ -10,7 +10,7 @@ The API processes images via URL query parameters, supporting operations like re
 
 Base URL:
 
-https://api.example.com/v1/image
+https://api.example.com/v2/image
 
 ---
 
@@ -95,19 +95,19 @@ https://api.example.com/v1/image
 
 ### 1. Resize to Specific Dimensions
 
-https://api.example.com/v1/image?url=https://example.com/image.jpg?w=300&h=200&fit=crop
+https://api.example.com/v2/image?url=https://example.com/image.jpg?w=300&h=200&fit=crop
 
 ### 2. Convert Format and Adjust Quality
 
-https://api.example.com/v1/image?url=https://example.com/image.jpg?fm=webp&q=80
+https://api.example.com/v2/image?url=https://example.com/image.jpg?fm=webp&q=80
 
 ### 3. Apply Blur Effect with High Resolution
 
-https://api.example.com/v1/image?url=https://example.com/image.jpg?blur=15&dpr=2
+https://api.example.com/v2/image?url=https://example.com/image.jpg?blur=15&dpr=2
 
 ### 4. Force Download
 
-https://api.example.com/v1/image?url=https://example.com/image.jpg?dl=1
+https://api.example.com/v2/image?url=https://example.com/image.jpg?dl=1
 
 ---
 

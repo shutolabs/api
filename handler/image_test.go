@@ -58,7 +58,7 @@ func TestImageHandler(t *testing.T) {
 	}{
 		{
 			name: "Basic resize with defaults",
-			path: "/v1/image/test.jpg",
+			path: "/v2/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "100",
 				"h": "100",
@@ -84,7 +84,7 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "Full parameter test",
-			path: "/v1/image/test.jpg",
+			path: "/v2/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "300",
 				"h": "200",
@@ -119,7 +119,7 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "Failed to fetch image",
-			path: "/v1/image/nonexistent.jpg",
+			path: "/v2/image/nonexistent.jpg",
 			queryParams: map[string]string{
 				"w": "100",
 				"h": "100",
@@ -138,7 +138,7 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "Failed to transform image",
-			path: "/v1/image/test.jpg",
+			path: "/v2/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "100",
 				"h": "100",
@@ -157,7 +157,7 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "Failed to get mime type",
-			path: "/v1/image/test.jpg",
+			path: "/v2/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "100",
 				"h": "100",
@@ -176,7 +176,7 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "Default DPR value",
-			path: "/v1/image/test.jpg",
+			path: "/v2/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "100", "h": "100",
 			},
@@ -204,7 +204,7 @@ func TestImageHandler(t *testing.T) {
 		},
 		{
 			name: "DPR value > 3",
-			path: "/v1/image/test.jpg",
+			path: "/v2/image/test.jpg",
 			queryParams: map[string]string{
 				"w": "100", "h": "100", "dpr": "3.1",
 			},

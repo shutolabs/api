@@ -330,7 +330,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "",
 	Host:             "",
-	BasePath:         "/v1",
+	BasePath:         "/v2",
 	Schemes:          []string{},
 	Title:            "shuto API",
 	Description:      "API for processing and transforming images",
