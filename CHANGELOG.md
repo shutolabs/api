@@ -1,3 +1,11 @@
+## [2.0.1](https://github.com/lgastler/shuto-api/compare/v2.0.0...v2.0.1) (2025-02-12)
+
+
+### Bug Fixes
+
+* **docker:** improve container configuration and deployment ([fbaaeec](https://github.com/lgastler/shuto-api/commit/fbaaeec07c2435f205a53b67012e6e4c9e5b09ee))
+* **docker:** remove unnecessary public folder copy in Dockerfile ([b64a027](https://github.com/lgastler/shuto-api/commit/b64a02771171f0cd77382dc48fa3e9166536a813))
+
 # [2.0.0](https://github.com/lgastler/shuto-api/compare/v1.3.0...v2.0.0) (2025-02-12)
 
 
