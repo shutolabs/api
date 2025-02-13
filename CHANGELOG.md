@@ -1,3 +1,15 @@
+# [2.1.0](https://github.com/lgastler/shuto-api/compare/v2.0.1...v2.1.0) (2025-02-13)
+
+
+### Bug Fixes
+
+* **docker:** pin vips and rclone package versions in Dockerfile ([3cb8d92](https://github.com/lgastler/shuto-api/commit/3cb8d9277151bd10f16545e03e41cba75c193843))
+
+
+### Features
+
+* **cors:** add CORS middleware to API endpoints ([f09cac1](https://github.com/lgastler/shuto-api/commit/f09cac110501848877ff9166db629f0ff8407bec))
+
 ## [2.0.1](https://github.com/lgastler/shuto-api/compare/v2.0.0...v2.0.1) (2025-02-12)
 
 
