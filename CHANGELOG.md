@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/lgastler/shuto-api/compare/v2.1.0...v2.1.1) (2025-02-13)
+
+
+### Bug Fixes
+
+* **docker:** update rclone package version constraint ([d3d8943](https://github.com/lgastler/shuto-api/commit/d3d89430996d5b9f9cbb0808de751dea090ff017))
+
 # [2.1.0](https://github.com/lgastler/shuto-api/compare/v2.0.1...v2.1.0) (2025-02-13)
 
 
