@@ -60,20 +60,21 @@ func main() {
 	configManager := config.NewDomainConfigManager(&config.FileConfigLoader{}, "config/domains.yaml")
 	rclone := utils.NewRclone(executor, configManager)
 
-	http.HandleFunc("/"+config.ApiVersion+"/image/", func(w http.ResponseWriter, r *http.Request) {
+	// Wrap handlers with CORS middleware
+	http.HandleFunc("/"+config.ApiVersion+"/image/", utils.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handler.ImageHandler(w, r, imageUtils, rclone, configManager)
-	})
-	http.HandleFunc("/"+config.ApiVersion+"/list/", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	http.HandleFunc("/"+config.ApiVersion+"/list/", utils.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handler.ListHandler(w, r, imageUtils, rclone, configManager)
-	})
-	http.HandleFunc("/"+config.ApiVersion+"/download/", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	http.HandleFunc("/"+config.ApiVersion+"/download/", utils.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		handler.DownloadHandler(w, r, imageUtils, rclone, configManager)
-	})
+	}))
 
-	// Serve Swagger UI
-	http.HandleFunc("/docs/", httpSwagger.Handler(
+	// Serve Swagger UI with CORS
+	http.HandleFunc("/docs/", utils.CORSMiddleware(httpSwagger.Handler(
 		httpSwagger.URL("/docs/doc.json"),
-	))
+	)))
 
 	port := os.Getenv("PORT")
 	if port == "" {

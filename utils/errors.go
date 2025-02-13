@@ -6,19 +6,16 @@ import (
 	"os"
 )
 
-// ErrorResponse represents a standardized error response
 type ErrorResponse struct {
 	Error   string `json:"error"`
 	Code    string `json:"code"`
 	Details string `json:"details,omitempty"`
 }
 
-// isDevelopment returns true if the environment is development
 func isDevelopment() bool {
-	return os.Getenv("ENV") != "production"
+	return os.Getenv("APP_ENV") == "development"
 }
 
-// Common error codes
 const (
 	ErrCodeInvalidRequest     = "INVALID_REQUEST"
 	ErrCodeUnauthorized       = "UNAUTHORIZED"
@@ -32,7 +29,6 @@ const (
 	ErrCodeInvalidSignature  = "INVALID_SIGNATURE"
 )
 
-// WriteError writes a standardized error response
 func WriteError(w http.ResponseWriter, status int, code string, message string, details string) {
 	resp := ErrorResponse{
 		Error: message,
@@ -56,7 +52,6 @@ func WriteError(w http.ResponseWriter, status int, code string, message string, 
 	}
 }
 
-// Common error handlers
 func WriteInvalidRequestError(w http.ResponseWriter, message string, details string) {
 	WriteError(w, http.StatusBadRequest, ErrCodeInvalidRequest, message, details)
 }
