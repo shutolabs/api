@@ -22,7 +22,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o main .
 FROM alpine:latest
 
 # Install runtime dependencies
-RUN apk add --no-cache vips-dev=8.15.3-r5 rclone=1.68.2-r2
+RUN apk add --no-cache vips-dev=8.15.3-r5 rclone~=1.68.2
 
 WORKDIR /app
 
