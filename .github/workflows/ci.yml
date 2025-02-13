@@ -87,7 +87,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
             type=raw,value=${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}-latest
-            type=sha,prefix=${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}-sha-
+            type=sha,prefix=${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}-sha-,format=long
 
       - name: Build and push to GHCR
         uses: docker/build-push-action@v5
