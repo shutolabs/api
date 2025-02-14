@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   app:
-    image: ghcr.io/lgastler/shuto-api:latest
+    image: ghcr.io/shutolabs/api:latest
     env_file: .env
     ports:
       - "8080:8080"

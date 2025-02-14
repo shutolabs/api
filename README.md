@@ -74,7 +74,7 @@ The Docker container requires configuration files to be mounted as volumes. Make
      -v ./rclone.conf:/root/.config/rclone/rclone.conf:ro \
      -v ./images:/app/images \
      --env-file .env \
-     ghcr.io/lgastler/shuto-api:latest
+     ghcr.io/shutolabs/api:latest
    ```
 
 2. Using Docker Compose:
